@@ -1,17 +1,20 @@
-# Allow access to command-line arguments
 import sys
 import os 
 import signal
-import IPython
-import run_klusta_batch as run
  
 # Import the core and GUI elements of Qt
-from PySide.QtCore import *
-from PySide.QtGui import *
+import PySide.QtCore as PCore
+import PySide.QtGui as PGui
 
-ROOT='/home/david/dataRat'
+#Import views
+from processManager import ProcessManager
 
-class FileBrowser(QGroupBox):
+#Path to your data folder
+ROOT='/home/david/Documents/app_1.0'
+
+
+
+class FileBrowser(PGui.QGroupBox):
 	
 	def __init__(self):
 		super(FileBrowser,self).__init__()
@@ -27,57 +30,57 @@ class FileBrowser(QGroupBox):
 		self._buttons()
 		self._layout()
 		
-		self.tree.connect(self.tree.selectionModel(),SIGNAL("selectionChanged(QItemSelection, QItemSelection)"),self.on_selection_change)
+		self.tree.connect(self.tree.selectionModel(),PCore.SIGNAL("selectionChanged(QItemSelection, QItemSelection)"),self.on_selection_change)
 		
 	def _buttons(self):
-		self.button_prm=QPushButton("Create prm and prb files \n in selected folders")
+		self.button_prm=PGui.QPushButton("Create prm and prb files \n in selected folders")
 		self.button_prm.clicked.connect(self.create_prm_prb)
 		self.button_prm.setEnabled(False)
 		
-		self.button_loadPRB=QPushButton("Load PRB model")
+		self.button_loadPRB=PGui.QPushButton("Load PRB model")
 		self.button_loadPRB.clicked.connect(self.load_PRB)
-		self.label_PRB=QLabel("No PRB model                                    ")
+		self.label_PRB=PGui.QLabel("No PRB model                                    ")
 		
-		self.button_loadPRM=QPushButton("Load PRM model")
+		self.button_loadPRM=PGui.QPushButton("Load PRM model")
 		self.button_loadPRM.clicked.connect(self.load_PRM)
-		self.label_PRM=QLabel("No PRM model")
+		self.label_PRM=PGui.QLabel("No PRM model")
 		
-		self.button_add=QPushButton("Add selection \n to list")
+		self.button_add=PGui.QPushButton("Add selection \n to list")
 		self.button_add.setEnabled(False)
 		
 	def _model(self):
-		self.model=QFileSystemModel(self)
+		self.model=PGui.QFileSystemModel(self)
 		self.model.setRootPath(self.root)
 		
 	def _tree(self):
-		self.tree=QTreeView(self)
+		self.tree=PGui.QTreeView(self)
 		self.tree.setModel(self.model)
 		self.tree.setRootIndex(self.model.index(self.root))
 
-		self.tree.setHeader(self.tree.header().setResizeMode(0,QHeaderView.ResizeToContents))
-		self.tree.setSelectionMode(QAbstractItemView.ExtendedSelection)
-		self.tree.setSelectionBehavior(QAbstractItemView.SelectRows)
+		self.tree.setHeader(self.tree.header().setResizeMode(0,PGui.QHeaderView.ResizeToContents))
+		self.tree.setSelectionMode(PGui.QAbstractItemView.ExtendedSelection)
+		self.tree.setSelectionBehavior(PGui.QAbstractItemView.SelectRows)
 		
 	def _layout(self):
-		grid=QGridLayout()
+		grid=PGui.QGridLayout()
 		grid.addWidget(self.button_loadPRM,0,0)
 		grid.addWidget(self.label_PRM,0,1)
 		grid.addWidget(self.button_loadPRB,1,0)
 		grid.addWidget(self.label_PRB,1,1)
 		
-		hbox=QHBoxLayout()
+		hbox=PGui.QHBoxLayout()
 		hbox.addLayout(grid)
 		hbox.addWidget(self.button_prm)
 		hbox.addWidget(self.button_add)
 		
-		vbox=QVBoxLayout()
+		vbox=PGui.QVBoxLayout()
 		vbox.addWidget(self.tree)
 		vbox.addLayout(hbox)
 		self.setLayout(vbox)
 	
 	def load_PRB(self):
-		filebox=QFileDialog(self,"Load model for PRB file")
-		filebox.setFileMode(QFileDialog.AnyFile)
+		filebox=PGui.QFileDialog(self,"Load model for PRB file")
+		filebox.setFileMode(PGui.QFileDialog.AnyFile)
 		filebox.setNameFilter("PRB (*.prb)")
 		if filebox.exec_():
 			self.prbModel=filebox.selectedFiles()[0]
@@ -86,8 +89,8 @@ class FileBrowser(QGroupBox):
 				self.button_prm.setEnabled(True)
 			
 	def load_PRM(self):
-		filebox=QFileDialog(self,"Load model for PRM file")
-		filebox.setFileMode(QFileDialog.AnyFile)
+		filebox=PGui.QFileDialog(self,"Load model for PRM file")
+		filebox.setFileMode(PGui.QFileDialog.AnyFile)
 		filebox.setNameFilter("PRM (*.prm)")
 		if filebox.exec_():
 			self.prmModel=filebox.selectedFiles()[0]
@@ -97,7 +100,7 @@ class FileBrowser(QGroupBox):
 
 	def create_prm_prb(self):
 		if self.prmModel==0 or self.prbModel==0:
-			msgbox=QMessageBox()
+			msgbox=PGui.QMessageBox()
 			msgbox.setText("Can't do : missing a PRB or PRM model")
 			msgbox.exec_()
 		else:
@@ -142,7 +145,7 @@ class FileBrowser(QGroupBox):
 		else:
 			self.button_prm.setEnabled(False)
 
-class ListToProcess(QGroupBox):
+class ListToProcess(PGui.QGroupBox):
 	
 	def __init__(self):
 		super(ListToProcess,self).__init__()
@@ -153,51 +156,44 @@ class ListToProcess(QGroupBox):
 		self._buttons()
 		self._layout()
 		
-		self.view.connect(self.view.selectionModel(),SIGNAL("selectionChanged(QItemSelection, QItemSelection)"),self.on_selection_change)
+		self.view.connect(self.view.selectionModel(),PCore.SIGNAL("selectionChanged(QItemSelection, QItemSelection)"),self.on_selection_change)
+		self.currentProcess=0
 		
 	def _model(self):
-		self.model=QStringListModel(self)
+		self.model=PGui.QStringListModel(self)
 
 	def _view(self):
-		self.view=QListView(self)
+		self.view=PGui.QListView(self)
 		self.view.setModel(self.model)
-		self.view.setSelectionMode(QAbstractItemView.ExtendedSelection)
-		self.view.setEditTriggers(QAbstractItemView.NoEditTriggers)
+		self.view.setSelectionMode(PGui.QAbstractItemView.ExtendedSelection)
+		self.view.setEditTriggers(PGui.QAbstractItemView.NoEditTriggers)
 		
 	def _buttons(self):
-		self.button_remove=QPushButton("Remove from list")
+		self.button_remove=PGui.QPushButton("Remove from list")
 		self.button_remove.setEnabled(False)
 		self.button_remove.clicked.connect(self.remove_from_selection)
 		
-		self.button_clear=QPushButton("Clear list")
+		self.button_clear=PGui.QPushButton("Clear list")
 		self.button_clear.setEnabled(False)
 		self.button_clear.clicked.connect(self.clear_list)
 		
-		self.button_save_txt=QPushButton("Save list")
+		self.button_save_txt=PGui.QPushButton("Save list")
 		self.button_save_txt.setEnabled(False)
 		self.button_save_txt.clicked.connect(self.save_txt)
 		
-		self.button_klusta=QPushButton("Run Klusta on list above")
-		self.button_klusta.setEnabled(False)
-		self.button_klusta.clicked.connect(self.run_klusta)
-		self.label_klusta=QLabel("Nothing running ")
-		
-		self.button_load_txt=QPushButton("Load list")
+		self.button_load_txt=PGui.QPushButton("Load list")
 		self.button_load_txt.clicked.connect(self.load_txt)
-		self.label_txt=QLabel("No list")
 
 	def _layout(self):
-		hboxButton=QHBoxLayout()
+		hboxButton=PGui.QHBoxLayout()
 		hboxButton.addWidget(self.button_remove)
 		hboxButton.addWidget(self.button_clear)
 		hboxButton.addWidget(self.button_save_txt)
 		hboxButton.addWidget(self.button_load_txt)
 		
-		vbox=QVBoxLayout()
+		vbox=PGui.QVBoxLayout()
 		vbox.addLayout(hboxButton)
 		vbox.addWidget(self.view)
-		vbox.addWidget(self.button_klusta)
-		vbox.addWidget(self.label_klusta)
 		self.setLayout(vbox)
 
 	def on_selection_change(self,selected,deselected):
@@ -230,10 +226,10 @@ class ListToProcess(QGroupBox):
 	def save_txt(self):
 		list=self.model.stringList()
 		if len(list)!=0:
-			filebox=QFileDialog(self,"Save list")
-			filebox.setFileMode(QFileDialog.AnyFile)
+			filebox=PGui.QFileDialog(self,"Save list")
+			filebox.setFileMode(PGui.QFileDialog.AnyFile)
 			filebox.setNameFilter("Text (*.txt)")
-			filebox.setAcceptMode(QFileDialog.AcceptSave)
+			filebox.setAcceptMode(PGui.QFileDialog.AcceptSave)
 			if filebox.exec_():
 				outputname=filebox.selectedFiles()[0]
 				output=open(outputname,"w")
@@ -241,43 +237,45 @@ class ListToProcess(QGroupBox):
 					output.write(line+"\n")
 				output.close()
 		else:
-			msgbox=QMessageBox()
+			msgbox=PGui.QMessageBox()
 			msgbox.setText("The list is empty, nothing to save")
 			msgbox.exec_()
 
-	def run_klusta(self):
-		reply = QMessageBox.question(self,'Message','Did you activate the klusta environment ? ', QMessageBox.Yes| QMessageBox.No)
+	#def run_klusta(self):
+		#reply = QMessageBox.question(self,'Message','Did you activate the klusta environment ? ', QMessageBox.Yes| QMessageBox.No)
 		
-		if reply==QMessageBox.Yes:
-			list=self.model.stringList()
-			self.label_klusta.setText("Start processing")
-			self.label_klusta.repaint()
+		#if reply==QMessageBox.Yes:
+			#list=self.model.stringList()
+			#self.label_klusta.setText("Start processing")
+			#self.label_klusta.repaint()
 			
-			for prmFile in list:
-				self.label_klusta.setText("Processing "+prmFile)
-				self.label_klusta.repaint()
-				QApplication.processEvents()
-				run.run_one_file(prmFile)
-			self.label_klusta.setText("List has been processed")
-		else:
-			msgbox=QMessageBox()
-			msgbox.setText("Quit the app, do 'source activate klusta' and restart. \n You can save your list before")
-			msgbox.exec_()
+			#for prmFile in list:
+				#self.label_klusta.setText("Processing "+prmFile)
+				#self.label_klusta.repaint()
+				#QApplication.processEvents()
+				
+				#self.currentProcess=CommandLineProcess()
+				#self.currentProcess.start_klusta(prmFile)
+				
+			##self.label_klusta.setText("List has been processed")
+		#else:
+			#msgbox=QMessageBox()
+			#msgbox.setText("Quit the app, do 'source activate klusta' and restart. \n You can save your list before")
+			#msgbox.exec_()
 
-		
 	def load_txt(self):
-		filebox=QFileDialog(self,"Load list of parameter files")
-		filebox.setFileMode(QFileDialog.AnyFile)
+		filebox=PGui.QFileDialog(self,"Load list of parameter files")
+		filebox.setFileMode(PGui.QFileDialog.AnyFile)
 		filebox.setNameFilter("Text (*.txt)")
 		if filebox.exec_():
 			newList=open(filebox.selectedFiles()[0]).readlines()
 			self.model.setStringList([line.rstrip() for line in newList])
-			self.button_klusta.setEnabled(True)
+			#self.button_klusta.setEnabled(True)
 			self.button_clear.setEnabled(True)
 			self.button_save_txt.setEnabled(True)
 
 
-class MainWindow(QWidget):
+class MainWindow(PGui.QWidget):
 	
 	def __init__(self):
 		super(MainWindow,self).__init__()
@@ -291,12 +289,12 @@ class MainWindow(QWidget):
 		self.fileBrowser.button_add.clicked.connect(self.add_to_selection)
 		
 		#Bottom pannel
-		self.logview=QFrame(self)
-		hboxButton=QHBoxLayout()
+		self.logview=PGui.QFrame(self)
+		hboxButton=PGui.QHBoxLayout()
 		self.logview.setLayout(hboxButton)
 
 		#Create Top splitter
-		splitterTop=QSplitter(Qt.Horizontal)
+		splitterTop=PGui.QSplitter(PCore.Qt.Horizontal)
 		splitterTop.setMinimumSize(width/2,height)
 		splitterTop.setChildrenCollapsible(False)
 		
@@ -311,17 +309,17 @@ class MainWindow(QWidget):
 		#splitterTop.handle(1).setLayout(vboxButton)
 		
 		#Create Vertical Splitter, with the top splitter and bottom pannel
-		splitterVertical=QSplitter(Qt.Vertical)
+		splitterVertical=PGui.QSplitter(PCore.Qt.Vertical)
 		splitterVertical.addWidget(splitterTop)
 		splitterVertical.addWidget(self.logview)
 		splitterVertical.setChildrenCollapsible(False)
 		
-		hbox=QHBoxLayout()
+		hbox=PGui.QHBoxLayout()
 		hbox.addWidget(splitterVertical)
 		
 		self.setLayout(hbox)
 		self.setMinimumSize(width,height)
-		self.setWindowTitle("Klusta Selection Manager")
+		self.setWindowTitle("Process Manager")
 		self.show()
 		
 	def add_to_selection(self):
@@ -350,13 +348,14 @@ class MainWindow(QWidget):
 		if len(newString)!=0:
 			self.listToProcess.button_save_txt.setEnabled(True)
 			self.listToProcess.button_clear.setEnabled(True)
-			self.listToProcess.button_klusta.setEnabled(True)
+			#self.listToProcess.button_klusta.setEnabled(True)
 	
 
 
 if __name__ == '__main__':
-	QApplication.setStyle("cleanlooks")
-	app = QApplication(sys.argv)
+	PGui.QApplication.setStyle("cleanlooks")
+	
+	app = PGui.QApplication(sys.argv)
 	
 	#to be able to close wth ctrl+c
 	signal.signal(signal.SIGINT, signal.SIG_DFL)
