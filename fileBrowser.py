@@ -2,8 +2,10 @@ import PySide.QtCore as PCore
 import PySide.QtGui as PGui
 import sys
 import signal
+import os
 
 class FileBrowser(PGui.QGroupBox):
+	sendsMessage=PCore.Signal(object)
 	
 	def __init__(self,root):
 		super(FileBrowser,self).__init__()
@@ -93,6 +95,8 @@ class FileBrowser(PGui.QGroupBox):
 			msgbox.setText("Can't do : missing a PRB or PRM model")
 			msgbox.exec_()
 		else:
+			nbSuccess=0
+			nbError=0
 			selection=self.tree.selectedIndexes()
 			for item in selection:
 				if item.column()==0 and item.sibling(item.row(),2).data()=='Folder':
@@ -106,6 +110,7 @@ class FileBrowser(PGui.QGroupBox):
 						dataName=baseName+'.dat'
 						if dataName not in os.listdir(path):
 							print "no raw data for folder",baseName
+							nbError+=1
 							continue #to the next item in selection
 					dataName=path+"/"+dataName
 
@@ -125,6 +130,10 @@ class FileBrowser(PGui.QGroupBox):
 						fPRM.seek(0)
 						fPRM.write(''.join(outputPRM))
 						fPRM.truncate()
+					nbSuccess+=1
+				msg="Created PRM/PRB - Success:"+str(nbSuccess)+" Fail:"+str(nbError)
+				self.sendsMessage.emit(msg)
+						
 
 	def on_selection_change(self,selected,deselected):
 		if len(self.tree.selectedIndexes())!=0:

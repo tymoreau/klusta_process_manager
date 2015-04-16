@@ -6,6 +6,7 @@ import signal
 class ListToProcess(PGui.QGroupBox):
 	becomesEmpty=PCore.Signal()
 	becomesFill=PCore.Signal()
+	sendsMessage=PCore.Signal(object)
 	
 	def __init__(self):
 		super(ListToProcess,self).__init__()
@@ -72,10 +73,14 @@ class ListToProcess(PGui.QGroupBox):
 		self.model.setStringList(newString)
 		self.view.clearSelection()
 		self.button_remove.setEnabled(False)
+
 		if len(newString)==0:
 			self.button_save_txt.setEnabled(False)
 			self.button_clear.setEnabled(False)
 			self.becomesEmpty.emit()
+			
+		msg="Removed "+str(len(string_toRemove))+" file(s)"
+		self.sendsMessage.emit(msg)
 
 	def clear_list(self):
 		self.model.setStringList([])
@@ -84,6 +89,8 @@ class ListToProcess(PGui.QGroupBox):
 		self.button_save_txt.setEnabled(False)
 		self.button_clear.setEnabled(False)
 		self.becomesEmpty.emit()
+		
+		self.sendsMessage.emit("Clear list")
 		
 	def save_txt(self):
 		list=self.model.stringList()
@@ -98,21 +105,25 @@ class ListToProcess(PGui.QGroupBox):
 				for line in list:
 					output.write(line+"\n")
 				output.close()
+				msg="Save list at "+str(outputname)
+				self.sendsMessage.emit(msg)
 		else:
-			msgbox=PGui.QMessageBox()
-			msgbox.setText("The list is empty, nothing to save")
-			msgbox.exec_()
+			msg="The list is empty, nothing to save"
+			self.sendsMessage.emit(msg)
 
 	def load_txt(self):
 		filebox=PGui.QFileDialog(self,"Load list of parameter files")
 		filebox.setFileMode(PGui.QFileDialog.AnyFile)
 		filebox.setNameFilter("Text (*.txt)")
 		if filebox.exec_():
-			newList=open(filebox.selectedFiles()[0]).readlines()
+			name=filebox.selectedFiles()[0]
+			newList=open(name).readlines()
 			self.model.setStringList([line.rstrip() for line in newList])
 			self.button_clear.setEnabled(True)
 			self.button_save_txt.setEnabled(True)
 			self.becomesFill.emit()
+			msg="Load list: "+str(name)
+			self.sendsMessage.emit(msg)
 
 if __name__=='__main__':
 	
