@@ -131,9 +131,13 @@ class FileBrowser(PGui.QGroupBox):
 						fPRM.write(''.join(outputPRM))
 						fPRM.truncate()
 					nbSuccess+=1
-				msg="Created PRM/PRB - Success:"+str(nbSuccess)+" Fail:"+str(nbError)
-				self.sendsMessage.emit(msg)
-						
+					
+				if nbSuccess+nbError==0:
+					self.sendsMessage.emit("no folder in selection")
+				else:
+					msg="Created PRM/PRB - Success:"+str(nbSuccess)+" Fail:"+str(nbError)
+					self.sendsMessage.emit(msg)
+
 
 	def on_selection_change(self,selected,deselected):
 		if len(self.tree.selectedIndexes())!=0:
