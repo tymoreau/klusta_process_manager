@@ -73,6 +73,7 @@ class FileBrowser(PGui.QGroupBox):
 		filebox=PGui.QFileDialog(self,"Load model for PRB file")
 		filebox.setFileMode(PGui.QFileDialog.AnyFile)
 		filebox.setNameFilter("PRB (*.prb)")
+		filebox.setOptions(PGui.QFileDialog.DontUseNativeDialog)
 		if filebox.exec_():
 			self.prbModel=filebox.selectedFiles()[0]
 			self.label_PRB.setText(self.prbModel)
@@ -83,6 +84,7 @@ class FileBrowser(PGui.QGroupBox):
 		filebox=PGui.QFileDialog(self,"Load model for PRM file")
 		filebox.setFileMode(PGui.QFileDialog.AnyFile)
 		filebox.setNameFilter("PRM (*.prm)")
+		filebox.setOptions(PGui.QFileDialog.DontUseNativeDialog)
 		if filebox.exec_():
 			self.prmModel=filebox.selectedFiles()[0]
 			self.label_PRM.setText(self.prmModel)

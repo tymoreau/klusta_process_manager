@@ -99,6 +99,7 @@ class ListToProcess(PGui.QGroupBox):
 			filebox.setFileMode(PGui.QFileDialog.AnyFile)
 			filebox.setNameFilter("Text (*.txt)")
 			filebox.setAcceptMode(PGui.QFileDialog.AcceptSave)
+			filebox.setOptions(PGui.QFileDialog.DontUseNativeDialog)
 			if filebox.exec_():
 				outputname=filebox.selectedFiles()[0]
 				output=open(outputname,"w")
@@ -114,6 +115,7 @@ class ListToProcess(PGui.QGroupBox):
 	def load_txt(self):
 		filebox=PGui.QFileDialog(self,"Load list of parameter files")
 		filebox.setFileMode(PGui.QFileDialog.AnyFile)
+		filebox.setOptions(PGui.QFileDialog.DontUseNativeDialog)
 		filebox.setNameFilter("Text (*.txt)")
 		if filebox.exec_():
 			name=filebox.selectedFiles()[0]

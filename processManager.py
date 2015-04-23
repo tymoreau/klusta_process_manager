@@ -1,6 +1,4 @@
 #Class to process a list of experiment in klusta
-#Buttons to launch klusta on list
-#View progress
 
 import PySide.QtCore as PCore
 import PySide.QtGui as PGui
@@ -16,20 +14,13 @@ HOST=PNet.QHostAddress(IP)
 PORT=8000
 
 #if start alone, will process LIST
-LIST=["/home/david/dataRat/Rat034_small/Rat034_small.prm","/home/david/dataRat/Rat034_small/Rat034_smal.prm"]
+LIST=["/home/david/dataRat/Rat034_small/Rat034_small2.pr","/home/david/dataRat/Rat034_small/DoNotExist.prm","/home/david/dataRat/Rat034_small/Rat034_small.prm"]
 
 SEPARATOR='---'*15
 
-
-#Common functions
-def clear_output(self):
-	self.label_general.setText("Nothing running")
-	self.errorsList=[]
-	self.successList=[]
-	self.label_errors.setText("")
-	self.label_success.setText("")
-	self.console_output.clear()
-	self.button_clear.setEnabled(False)
+#Command to perform on list
+PROGRAM="klusta"
+ARGUMENTS=["--overwrite"]
 
 
 
@@ -38,13 +29,14 @@ class TabHere(PGui.QWidget):
 	def __init__(self):
 		super(TabHere,self).__init__()
 		
-		self.program="klusta"
+		self.program=PROGRAM
 		self.prmFileList=[]
 		self.nbFile=0
 		self.nbFileDone=0
 		self.errorsList=[]
 		self.successList=[]
 		self.currentName=""
+		self.stopNext=False
 		
 		self._buttons()
 		self._labels()
@@ -56,11 +48,15 @@ class TabHere(PGui.QWidget):
 		
 		self.button_clear=PGui.QPushButton("Clear output")
 		self.button_clear.setEnabled(False)
-		self.button_clear.clicked.connect(clear_output)
-
+		self.button_clear.clicked.connect(self.clear_output)
+		
+		self.button_stopNext=PGui.QPushButton("Stop after current process")
+		self.button_stopNext.clicked.connect(self.stop_next)
+		self.button_stopNext.setEnabled(False)
 		
 	def _labels(self):
-		self.label_general=PGui.QLabel("Nothing running")
+		self.label_command=PGui.QLabel("<b>Command:</b> "+PROGRAM+" "+" ".join(ARGUMENTS))
+		self.label_general=PGui.QLabel("<b>Nothing running</b>")
 		self.label_errors=PGui.QLabel("")
 		self.label_success=PGui.QLabel("")
 
@@ -72,10 +68,12 @@ class TabHere(PGui.QWidget):
 		grid=PGui.QGridLayout()
 		grid.addWidget(self.button_processList,0,0,1,1)
 		grid.addWidget(self.button_clear,0,1,1,1)
-		grid.addWidget(self.label_general,1,0,1,2)
-		grid.addWidget(self.label_success,2,0,1,2)
-		grid.addWidget(self.label_errors,3,0,1,2)
-		grid.addWidget(self.console_output,0,2,4,3)
+		grid.addWidget(self.button_stopNext,1,0,1,1)
+		grid.addWidget(self.label_command,2,0,1,2)
+		grid.addWidget(self.label_general,3,0,1,2)
+		grid.addWidget(self.label_success,4,0,1,2)
+		grid.addWidget(self.label_errors,5,0,1,2)
+		grid.addWidget(self.console_output,0,2,6,3)
 		self.setLayout(grid)
 		
 	def feed_list(self,prmFileList):
@@ -100,11 +98,13 @@ class TabHere(PGui.QWidget):
 		self.process.readyRead.connect(self.display_output)
 		self.process.setProcessChannelMode(PCore.QProcess.MergedChannels)
 		
+		self.button_stopNext.setEnabled(True)
+		
 		self.run_one(prmFileList[0])
 
 	def run_one(self,prmFile):
 		print "ProcessManager Here: dealing with prmFile",prmFile
-		arguments=[prmFile,"--cluster-only"]
+		arguments=[prmFile] + ARGUMENTS
 		path='/'.join(prmFile.split('/')[:-1])
 		self.currentName=prmFile.split('/')[-1]
 		self.separator()
@@ -120,6 +120,10 @@ class TabHere(PGui.QWidget):
 		self.console_output.append(sep1)
 		self.console_output.append(sep2)
 
+	def stop_next(self):
+		self.stopNext=True
+		self.label_general.setText("<b>Processing file "+str(self.nbFileDone+1)+"/"+str(self.nbFile)+": "+str(self.currentName)+"\n This will be the last file processed </b>")
+
 	def go_to_next(self,exitcode):
 		if exitcode!=0:
 			print "ProcessManager Here: exitcode",exitcode
@@ -128,19 +132,29 @@ class TabHere(PGui.QWidget):
 		else:
 			self.successList.append(self.currentName)
 			self.label_success.setText("Klusta ran with file(s): \n"+'\n'.join(self.successList))
-			
-		
+
 		self.nbFileDone+=1
 		
 		if self.nbFile==self.nbFileDone:
 			print "ProcessManager Here: every file was processed"
-			self.label_general.setText("List done")
+			self.label_general.setText("<b>List done</b>")
 			self.button_clear.setEnabled(True)
 			self.prmFileList=[]
 			self.nbFile=0
 			self.nbFileDone=0
 			self.currentName=""
 			self.process.close()
+			self.button_stopNext.setEnabled(False)
+		elif self.stopNext:
+			print "ProcessManager: stop next"
+			self.label_general.setText("<b>List done partially:</b> "+str(self.nbFileDone)+"/"+str(self.nbFile))
+			self.button_clear.setEnabled(True)
+			self.prmFileList=[]
+			self.nbFile=0
+			self.nbFileDone=0
+			self.currentName=""
+			self.process.close()
+			self.button_stopNext.setEnabled(False)
 		else:
 			print "ProcessManager Here: move to next file"
 			self.run_one(self.prmFileList[self.nbFileDone])
@@ -150,6 +164,14 @@ class TabHere(PGui.QWidget):
 		self.console_output.append(lines)
 		
 
+	def clear_output(self):
+		self.label_general.setText("Nothing running")
+		self.errorsList=[]
+		self.successList=[]
+		self.label_errors.setText("")
+		self.label_success.setText("")
+		self.console_output.clear()
+		self.button_clear.setEnabled(False)
 
 
 class TabRemote(PGui.QStackedWidget):
@@ -175,9 +197,11 @@ class TabRemote(PGui.QStackedWidget):
 		self.tcpSocket.stateChanged.connect(self.on_state_change)
 		self.tcpSocket.disconnected.connect(self.on_disconnection)
 		self.tcpSocket.readyRead.connect(self.display_output_from_remote)
+		
 		self.blockSize=0
 		self.ip=IP
 		self.port=PORT
+		
 
 	def _buttons(self):
 		self.button_connect=PGui.QPushButton("\n Connect to server \n")
@@ -188,7 +212,7 @@ class TabRemote(PGui.QStackedWidget):
 		
 		self.button_clear=PGui.QPushButton("Clear output")
 		self.button_clear.setEnabled(False)
-		self.button_clear.clicked.connect(clear_output)
+		self.button_clear.clicked.connect(self.clear_output)
 
 	def _labels(self):
 		self.label_general=PGui.QLabel("Nothing running")
@@ -276,16 +300,34 @@ class TabRemote(PGui.QStackedWidget):
 		self.setCurrentIndex(0)
 		self.label_state.setText("Socket was disconnected")
 
-	def feed_list_remote(self,prmFileList):
-		print "enter feed list"
+
+	def send_protocol(self,instruction,prmFileList=[]):
 		block=PCore.QByteArray()
 		out=PCore.QDataStream(block,PCore.QIODevice.WriteOnly)
+		out.setVersion(PCore.QDataStream.Qt_4_0)
 		out.writeUInt16(0)
-		out.writeQStringList(prmFileList)
+		out.writeString(instruction)
+		if instruction=="processList" and len(prmFileList)!=0:
+			out.writeQStringList(prmFileList)
+		elif instruction=="stopProcess":
+			pass
+		elif instruction=="myProcessState":
+			pass
+		else:
+			print "send_protocol : instruction not known"
+			return 0
 		out.device().seek(0)
 		out.writeUInt16(block.size()-2)
-		self.tcpSocket.write(block)
-		print "send list to server"
+		print "block:",block[0]
+		return block
+
+	def feed_list_remote(self,prmFileList):
+		block=self.send_protocol("processList",prmFileList)
+		if block:
+			self.tcpSocket.write(block)
+			print "send list to server"
+		else:
+			print "could not send list to server"
 
 
 	def display_error(self,socketError):
@@ -315,6 +357,17 @@ class TabRemote(PGui.QStackedWidget):
 		
 		print "message received:", instr.readString()
 
+	def clear_output():
+		self.label_general.setText("Nothing running")
+		self.errorsList=[]
+		self.successList=[]
+		self.label_errors.setText("")
+		self.label_success.setText("")
+		self.console_output.clear()
+		self.button_clear.setEnabled(False)
+
+
+
 
 class ProcessManager(PGui.QTabWidget):
 
@@ -338,7 +391,7 @@ if __name__=='__main__':
 	
 	
 	win=ProcessManager()
-	win.setMinimumSize(800,600)
+	win.setMinimumSize(900,600)
 	
 	def processListRemote():
 		win.tabRemote.feed_list_remote(LIST)
