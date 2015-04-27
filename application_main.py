@@ -9,7 +9,7 @@ import PySide.QtGui as PGui
 #Import views
 from processManager import ProcessManager
 from fileBrowser import FileBrowser
-from listToProcess import ListToProcess
+from experimentModel import ExperimentModel, Experiment
 
 #Path to your data folder
 ROOT='/home/david/dataRat'
@@ -43,18 +43,17 @@ class MainWindow(PGui.QWidget):
 		
 		#Views
 		self.fileBrowser=FileBrowser(ROOT)
-		self.listToProcess=ListToProcess()
 		self.processManager=ProcessManager()
 		self.logView=LogView()
 
 		#Connect views
-		self.fileBrowser.button_add.clicked.connect(self.add_to_selection)
-		self.processManager.tabHere.button_processList.clicked.connect(self.process_list_here)
-		self.listToProcess.becomesEmpty.connect(lambda: self.processManager.tabHere.button_processList.setEnabled(False))
-		self.listToProcess.becomesFill.connect(lambda: self.processManager.tabHere.button_processList.setEnabled(True))
+		self.fileBrowser.button_add.clicked.connect(self.add_to_process_manager)
+		#self.processManager.tabHere.button_processList.clicked.connect(self.process_list_here)
+		#self.listToProcess.becomesEmpty.connect(lambda: self.processManager.tabHere.button_processList.setEnabled(False))
+		#self.listToProcess.becomesFill.connect(lambda: self.processManager.tabHere.button_processList.setEnabled(True))
 		
 		#Connect message to log
-		self.listToProcess.sendsMessage.connect(self.logView.label.setText)
+		#self.listToProcess.sendsMessage.connect(self.logView.label.setText)
 		self.fileBrowser.sendsMessage.connect(self.logView.label.setText)
 		self.sendsMessage.connect(self.logView.label.setText)
 
@@ -68,15 +67,9 @@ class MainWindow(PGui.QWidget):
 		splitterTop.setMinimumSize(WIDTH/2,HEIGHT)
 		splitterTop.setChildrenCollapsible(False)
 		
-		group=PGui.QWidget(self)
-		vbox=PGui.QVBoxLayout()
-		vbox.addWidget(self.listToProcess)
-		vbox.addWidget(self.logView)
-		group.setLayout(vbox)
-		
 		#Add the treeview and the selection list
 		splitterTop.addWidget(self.fileBrowser)
-		splitterTop.addWidget(group)
+		#splitterTop.addWidget(self.logView)
 		splitterTop.setMinimumSize(MIN_WIDTH,int(MIN_HEIGHT/2))
 
 		#Add buttons in the handle of the top splitter
@@ -98,46 +91,44 @@ class MainWindow(PGui.QWidget):
 		self.setMinimumSize(WIDTH,HEIGHT)
 		self.setWindowTitle(TITLE)
 
-	def add_to_selection(self):
-		string_toAdd=[]
-		selection=sorted(self.fileBrowser.tree.selectedIndexes())
-		for item in selection:
-			if item.column()==0:
-				name=item.data()
-				#size=item.sibling(item.row(),1).data()
-				#type=item.sibling(item.row(),2).data()
-				type=self.fileBrowser.model.type(item)
-				if type=='Folder':
-					path=self.fileBrowser.model.filePath(item)
-					for filename in os.listdir(path):
-						if filename.endswith('.prm'):
-							string_toAdd.append(path+'/'+filename)
-							break
-				elif name.endswith(".prm"):
-					path=self.fileBrowser.model.filePath(item)
-					string_toAdd.append(path)
-			
-		if string_toAdd:
-			currentString=self.listToProcess.model.stringList()
-			newString=list(set(currentString).union(set(string_toAdd)))
-			newFiles=len(newString)-len(currentString)
-			if newFiles!=0:
-				newString=sorted(newString, key=lambda s: s.lower())
-				self.listToProcess.model.setStringList(newString)
-				self.listToProcess.button_save_txt.setEnabled(True)
-				self.listToProcess.button_clear.setEnabled(True)
-				self.listToProcess.becomesFill.emit()
-				self.sendsMessage.emit("Added "+str(newFiles)+" file(s)")
-			else:
-				self.sendsMessage.emit("Nothing new to add")
-		else:
-			self.sendsMessage.emit("No PRM files to add")
-				
-			
 
-	def process_list_here(self):
-		list=self.listToProcess.model.stringList()
-		self.processManager.tabHere.feed_list(list)
+	#Convert selection of tree view into Experiment object to add to experimentModel
+	def add_to_process_manager(self):
+		pass
+		#string_toAdd=[]
+		#selection=sorted(self.fileBrowser.tree.selectedIndexes())
+		#for item in selection:
+			#if item.column()==0:
+				#name=item.data()
+				##size=item.sibling(item.row(),1).data()
+				##type=item.sibling(item.row(),2).data()
+				#type=self.fileBrowser.model.type(item)
+				#if type=='Folder':
+					#path=self.fileBrowser.model.filePath(item)
+					#for filename in os.listdir(path):
+						#if filename.endswith('.prm'):
+							#string_toAdd.append(path+'/'+filename)
+							#break
+				#elif name.endswith(".prm"):
+					#path=self.fileBrowser.model.filePath(item)
+					#string_toAdd.append(path)
+			
+		#if string_toAdd:
+			#currentString=self.listToProcess.model.stringList()
+			#newString=list(set(currentString).union(set(string_toAdd)))
+			#newFiles=len(newString)-len(currentString)
+			#if newFiles!=0:
+				#newString=sorted(newString, key=lambda s: s.lower())
+				#self.listToProcess.model.setStringList(newString)
+				#self.listToProcess.button_save_txt.setEnabled(True)
+				#self.listToProcess.button_clear.setEnabled(True)
+				#self.listToProcess.becomesFill.emit()
+				#self.sendsMessage.emit("Added "+str(newFiles)+" file(s)")
+			#else:
+				#self.sendsMessage.emit("Nothing new to add")
+		#else:
+			#self.sendsMessage.emit("No PRM files to add")
+				
 
 
 if __name__ == '__main__':

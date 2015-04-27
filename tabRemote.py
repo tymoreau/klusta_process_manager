@@ -4,7 +4,7 @@ import PySide.QtGui as PGui
 import PySide.QtNetwork as PNet
 
 #Connection to remote computer
-IP="10.51.101.164"
+IP="10.51.101.29"
 HOST=PNet.QHostAddress(IP) 
 PORT=8000
 
