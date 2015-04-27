@@ -104,8 +104,8 @@ class FileBrowser(PGui.QGroupBox):
 				if item.column()==0 and item.sibling(item.row(),2).data()=='Folder':
 					path=self.model.filePath(item)
 					baseName=item.data()
-					prbName=path+"/"+baseName+".prb"
-					prmName=path+"/"+baseName+".prm"
+					prbName=baseName+".prb"
+					prmName=baseName+".prm"
 					dataName=baseName+".raw.kwd"
 					
 					if dataName not in os.listdir(path):
@@ -114,12 +114,11 @@ class FileBrowser(PGui.QGroupBox):
 							print "no raw data for folder",baseName
 							nbError+=1
 							continue #to the next item in selection
-					dataName=path+"/"+dataName
 
-					os.system('cp '+self.prbModel+" "+prbName)
-					os.system('cp '+self.prmModel+" "+prmName)
+					os.system('cp '+self.prbModel+" "+path+"/"+prbName)
+					os.system('cp '+self.prmModel+" "+path+"/"+prmName)
 				
-					with open(prmName,"r+") as fPRM:
+					with open(path+"/"+prmName,"r+") as fPRM:
 						outputPRM=[]
 						for line in fPRM.readlines():
 							if line.startswith("experiment_name"):

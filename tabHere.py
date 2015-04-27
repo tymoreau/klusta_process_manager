@@ -10,67 +10,22 @@ PROGRAM="klusta"
 ARGUMENTS=["--overwrite"]
 
 
+
+
 class TabHere(PGui.QWidget):
 	
 	def __init__(self):
 		super(TabHere,self).__init__()
 		
 		self.program=PROGRAM
-		self.prmFileList=[]
-		self.nbFile=0
-		self.nbFileDone=0
-		self.errorsList=[]
-		self.successList=[]
-		self.currentName=""
+		self.experimentList=[]
 		self.stopNext=False
+		self.nbCurrent=0
 		
-		self._buttons()
-		self._labels()
-		self._layout()
-
-	def _buttons(self):
-		self.button_processList=PGui.QPushButton("Process list")
-		self.button_processList.setEnabled(False)
+		self.isRunning=False
 		
-		self.button_clear=PGui.QPushButton("Clear output")
-		self.button_clear.setEnabled(False)
-		self.button_clear.clicked.connect(self.clear_output)
-		
-		self.button_stopNext=PGui.QPushButton("Stop after current process")
-		self.button_stopNext.clicked.connect(self.stop_next)
-		self.button_stopNext.setEnabled(False)
-		
-	def _labels(self):
-		self.label_command=PGui.QLabel("<b>Command:</b> "+PROGRAM+" "+" ".join(ARGUMENTS))
-		self.label_general=PGui.QLabel("<b>Nothing running</b>")
-		self.label_errors=PGui.QLabel("")
-		self.label_success=PGui.QLabel("")
-
-	def _layout(self):
-		self.console_output=PGui.QTextEdit()
-		self.console_output.setReadOnly(True)
-		self.console_output.setAlignment(PCore.Qt.AlignLeft)
-		
-		grid=PGui.QGridLayout()
-		grid.addWidget(self.button_processList,0,0,1,1)
-		grid.addWidget(self.button_clear,0,1,1,1)
-		grid.addWidget(self.button_stopNext,1,0,1,1)
-		grid.addWidget(self.label_command,2,0,1,2)
-		grid.addWidget(self.label_general,3,0,1,2)
-		grid.addWidget(self.label_success,4,0,1,2)
-		grid.addWidget(self.label_errors,5,0,1,2)
-		grid.addWidget(self.console_output,0,2,6,3)
-		self.setLayout(grid)
-		
-	def feed_list(self,prmFileList):
-		self.prmFileList=prmFileList
-		self.nbFile=len(prmFileList)
-		self.nbFileDone=0
-		self.currentName=""
-		self.label_general.setText("Start processing list ("+str(self.nbFile)+" files)")
-		
+		#Process
 		self.process=PCore.QProcess()
-		
 		#dealing with the klusta environment
 		env = PCore.QProcess.systemEnvironment()
 		itemToReplace=[item for item in env if item.startswith('PATH=')]
@@ -79,28 +34,93 @@ class TabHere(PGui.QWidget):
 			env.remove(item)
 			env.append(newitem)
 		self.process.setEnvironment(env)
-
 		self.process.finished.connect(self.go_to_next)
 		self.process.readyRead.connect(self.display_output)
 		self.process.setProcessChannelMode(PCore.QProcess.MergedChannels)
 		
-		self.button_stopNext.setEnabled(True)
+		#table
+		self.table=PGui.QTableWidget(0,2)
+		self.table.setHorizontalHeaderLabels(["File","State"])
+		self.table.horizontalHeader().setResizeMode(PGui.QHeaderView.Stretch)
+		self.table.setEditTriggers(PGui.QAbstractItemView.NoEditTriggers)
 		
-		self.run_one(prmFileList[0])
+		#console
+		self.console_output=PGui.QTextEdit()
+		self.console_output.setReadOnly(True)
+		
+		#Layout
+		self._buttons()
+		self._labels()
+		self._layout()
 
-	def run_one(self,prmFile):
+
+	def _buttons(self):
+		self.button_processList=PGui.QPushButton("\n Process list \n")
+		self.button_processList.setEnabled(False)
+		#connect in application_main.py
+		
+		self.button_clear=PGui.QPushButton("Clear output")
+		self.button_clear.setEnabled(False)
+		self.button_clear.clicked.connect(self.clear_output)
+		
+		self.button_stopNext=PGui.QPushButton("Stop after current file")
+		self.button_stopNext.clicked.connect(self.stop_next)
+		self.button_stopNext.setEnabled(False)
+		
+	def _labels(self):
+		self.label_command=PGui.QLabel("<b>Command:</b> "+PROGRAM+" "+" ".join(ARGUMENTS))
+
+	def _layout(self):
+		grid=PGui.QGridLayout()
+		grid.addWidget(self.button_processList,0,0,1,2)
+		grid.addWidget(self.button_clear,1,0,1,1)
+		grid.addWidget(self.button_stopNext,1,1,1,1)
+		grid.addWidget(self.label_command,2,0,1,2)
+		grid.addWidget(self.table,3,0,6,2)
+		grid.addWidget(self.console_output,0,2,9,2)
+		self.setLayout(grid)
+		
+	def update_table(self):
+		self.table.clear()
+		self.table.setRowCount(0)
+		self.table.setHorizontalHeaderLabels(["File","State"])
+		for row in range(len(self.experimentList)):
+			self.table.insertRow(row)
+			itemFile=PGui.QTableWidgetItem(self.experimentList[row][0])
+			itemState=PGui.QTableWidgetItem(self.experimentList[row][2])
+			self.table.setItem(row,0,itemFile)
+			self.table.setItem(row,1,itemState)
+		
+		
+		
+	def feed_list(self,prmFileList):
+		for prmFilePath in prmFileList:
+			name=prmFilePath.split('/')[-1]
+			self.experimentList.append([name,prmFilePath,"to be process"])
+			
+		if not self.isRunning:
+			self.run_one(self.experimentList[self.nbCurrent])
+			self.button_stopNext.setEnabled(True)
+			
+		self.update_table()
+		
+
+	def run_one(self,experiment):
+		prmFile=experiment[1]
 		print "ProcessManager Here: dealing with prmFile",prmFile
 		arguments=[prmFile] + ARGUMENTS
-		path='/'.join(prmFile.split('/')[:-1])
-		self.currentName=prmFile.split('/')[-1]
+		folderPath='/'.join(prmFile.split('/')[:-1])
 		self.separator()
-		self.process.setWorkingDirectory(path)
+		self.process.setWorkingDirectory(folderPath)
 		self.process.start(self.program,arguments)
-		self.label_general.setText("Processing file "+str(self.nbFileDone+1)+"/"+str(self.nbFile)+": "+str(self.currentName))
+		
+		experiment[2]="running"
+		self.update_table()
 
 	def separator(self):
+		currentName=self.experimentList[self.nbCurrent][0]
 		sep='<b>'+SEPARATOR+SEPARATOR+'</b> \n'
-		sep1='<b>'+str(self.currentName)+'</b> \n'
+		sep1='<b>'+str(currentName)+'</b> \n'
 		sep2='<b>'+SEPARATOR+SEPARATOR+'</b>'
 		self.console_output.append(sep)
 		self.console_output.append(sep1)
@@ -108,42 +128,39 @@ class TabHere(PGui.QWidget):
 
 	def stop_next(self):
 		self.stopNext=True
-		self.label_general.setText("<b>Processing file "+str(self.nbFileDone+1)+"/"+str(self.nbFile)+": "+str(self.currentName)+"\n This will be the last file processed </b>")
+		i=self.nbCurrent+1
+		while i<len(self.experimentList):
+			self.experimentList[i][2]="(Stop) to be process"
+			i+=1
+		self.update_table()
 
 	def go_to_next(self,exitcode):
 		if exitcode!=0:
 			print "ProcessManager Here: exitcode",exitcode
-			self.errorsList.append(self.currentName)
-			self.label_errors.setText("Klusta crashed with file(s): \n"+'\n'.join(self.errorsList))
+			self.experimentList[self.nbCurrent][2]="klusta crashed"
 		else:
-			self.successList.append(self.currentName)
-			self.label_success.setText("Klusta ran with file(s): \n"+'\n'.join(self.successList))
-
-		self.nbFileDone+=1
+			self.experimentList[self.nbCurrent][2]="Done (klusta ran)"
+		self.update_table()
+		self.nbCurrent+=1
 		
-		if self.nbFile==self.nbFileDone:
-			print "ProcessManager Here: every file was processed"
-			self.label_general.setText("<b>List done</b>")
-			self.button_clear.setEnabled(True)
-			self.prmFileList=[]
-			self.nbFile=0
-			self.nbFileDone=0
-			self.currentName=""
-			self.process.close()
-			self.button_stopNext.setEnabled(False)
-		elif self.stopNext:
-			print "ProcessManager: stop next"
-			self.label_general.setText("<b>List done partially:</b> "+str(self.nbFileDone)+"/"+str(self.nbFile))
-			self.button_clear.setEnabled(True)
-			self.prmFileList=[]
-			self.nbFile=0
-			self.nbFileDone=0
-			self.currentName=""
-			self.process.close()
-			self.button_stopNext.setEnabled(False)
-		else:
+		#Go to next
+		if not self.stopNext and not self.nbCurrent==len(self.experimentList):
 			print "ProcessManager Here: move to next file"
-			self.run_one(self.prmFileList[self.nbFileDone])
+			self.run_one(self.experimentList[self.nbCurrent])
+			return
+		
+		#Or stop
+		if self.nbCurrent==len(self.experimentList):
+			print "ProcessManager Here: every file was processed"
+
+		if self.stopNext:
+			print "ProcessManager: stop next"
+			self.stopNext=False
+
+		self.process.close()
+		self.button_stopNext.setEnabled(False)
+		self.button_clear.setEnabled(True)
+
 
 	def display_output(self):
 		lines=str(self.process.readAll())
@@ -151,10 +168,8 @@ class TabHere(PGui.QWidget):
 		
 
 	def clear_output(self):
-		self.label_general.setText("Nothing running")
-		self.errorsList=[]
-		self.successList=[]
-		self.label_errors.setText("")
-		self.label_success.setText("")
 		self.console_output.clear()
 		self.button_clear.setEnabled(False)
+		self.nbCurrent=0
+		self.experimentList=[]
+		self.update_table()

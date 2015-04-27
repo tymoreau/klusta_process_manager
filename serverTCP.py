@@ -28,18 +28,61 @@ SERVER_PATH="/home/david/dataServer"
 #-------------------------------------------------------------------------------------------------------------------
 #  Experiment
 #-------------------------------------------------------------------------------------------------------------------
-class Experiment(object):
+class Experiment(PCore.QObject):
+	changeState=PCore.Signal(object)
 	
-	def __init__(self,name,pathNAS="",pathServer="",state="Object just created",isDone=False):
+	def __init__(self,name,pathNAS):
+		super(Experiment,self).__init__()
 		
 		#where to find the prmFile
 		self.name=name
 		self.pathNAS=pathNAS
-		self.pathServer=pathServer
 		
+		#where to find folder
+		self.folderName=pathNAS.split('/')[-2]
+		self.folderPathNAS='/'.join(pathNAS.split('/')[:-1])
+
+		#where to put on the server
+		self.folderPathServer=SERVER_PATH+'/'+self.folderName
+		self.pathServer=SERVER_PATH+'/'+self.folderName+'/'+self.name
+
 		#where is the processing
-		self.state=state
-		self.isDone=isDone
+		self.state="Found in NAS"
+		self.isTransfered=False
+		self.isRunning=False
+		self.isDone=False
+
+
+	def copy_fromNAS_toServer(self):
+		if not self.isTransfered:
+			try:
+				#to improve: move file by file
+				os.system('cp -r '+self.folderPathNAS+' '+SERVER_PATH+'/')
+				print('cp -r '+self.folderPathNAS+' '+SERVER_PATH+'/')
+				self.state="transfered to server"
+				self.isTransfered=True
+			except Exception,e:
+				print "exception:",e
+				self.state="could not transfer to server"
+			self.changeState.emit(self.name)
+		
+	def run_klusta(self,process):
+		process.setWorkingDirectory(SERVER_PATH+'/'+self.folderName)
+		process.start(PROGRAM,[self.name]+ARGUMENTS)
+		self.state="Klusta running"
+		self.isRunning=True
+		self.changeState.emit(self.name)
+		
+	def is_done(self,exitcode):
+		if exitcode!=0:
+			self.state="klusta crashed"
+			print "exitcode", exitcode
+		else:
+			self.state="Processing done (klusta ran)"
+		self.isDone=True
+		self.isRunning=False
+		self.changeState.emit(self.name)
+
 
 
 
@@ -47,8 +90,8 @@ class Experiment(object):
 #  CLIENT: tcpSocket to communicate with the tcpSocket of ProcessManager.py  ---- other data on client
 #-------------------------------------------------------------------------------------------------------------------
 class Client(PCore.QObject):
-	hasQuit=PCore.Signal()
-	hasList=PCore.Signal(object)
+	hasUpdate=PCore.Signal()
+	hasNewExperiment=PCore.Signal()
 	
 	def __init__(self,socket):
 		super(Client,self).__init__()
@@ -81,7 +124,6 @@ class Client(PCore.QObject):
 
 
 	def read(self):
-		print "enter read"
 		#read size of block
 		if self.tcpSocket.bytesAvailable() < 2:
 			print "client: bytes inf 2"
@@ -102,20 +144,35 @@ class Client(PCore.QObject):
 
 
 	def instruction_process_list(self):
-		print "received: processList"
+		print "Do: processList"
 		#read list
 		self.prmFileList+=self.dataStream.readQStringList()
 		#check it
 		for prmFile in self.prmFileList:
 			self.check_file(prmFile)
 		self.prmFileList=[]
-		#send signal to ProcessView
-		self.hasList.emit(self.ip)
+		#send change to client
+		self.send_process_state()
+		#Signal server
+		self.hasUpdate.emit()
+	
 		#client is waiting since this moment
 		self.waitingSince=time.time()
-		#send check result to client
-		self.send_process_state()
+		
+		#transfer correct file from NAS to Server
+		for name,experiment in self.experimentDict.items():
+			if not experiment.isTransfered:
+				experiment.copy_fromNAS_toServer()
+		#signal server that new files arrived (maybe)
+		self.hasNewExperiment.emit()
 
+
+	def on_experiment_change_state(self):
+		#send change to client
+		self.send_process_state()
+		#Signal server
+		self.hasUpdate.emit()
+		
 
 	def check_file(self,prmFile):
 		#get the name of the file (prmFile can be the full path)
@@ -136,7 +193,8 @@ class Client(PCore.QObject):
 		for path,dirs,files in os.walk(NAS_PATH):
 			if name in files:
 				prmFileNAS=os.path.join(path,name)
-				self.experimentDict[name]=Experiment(name,pathNAS=prmFileNAS,state="found in NAS")
+				self.experimentDict[name]=Experiment(name,pathNAS=prmFileNAS)
+				self.experimentDict[name].changeState.connect(self.on_experiment_change_state)
 				found=True
 				break
 		if not found:
@@ -144,12 +202,15 @@ class Client(PCore.QObject):
 
 
 	def send_process_state(self):
-		listToSend=self.impossibleList
+		#Send state to client
+		listToSend=[]
 		for name,experiment in self.experimentDict.items():
 			listToSend+=[name,experiment.state]
+		listToSend+=self.impossibleList
 		block=self.send_protocol("updateDict",listToSend)
 		self.tcpSocket.write(block)
 		print "Send updateDict to client",self.ip
+		print "list=",listToSend
 		
 	def send_protocol(self,instruction,List=[]):
 		block=PCore.QByteArray()
@@ -172,7 +233,7 @@ class Client(PCore.QObject):
 		except RuntimeError:
 			pass
 		self.connected="No"
-		self.hasQuit.emit()
+		self.hasUpdate.emit()
 
 
 #-------------------------------------------------------------------------------------------------------------------
@@ -211,8 +272,23 @@ class ServerView(PGui.QGroupBox):
 		vbox.addWidget(self.button_listen)
 		vbox.setContentsMargins(10,10,10,10)
 		self.setLayout(vbox)
-		
 
+
+
+#-------------------------------------------------------------------------------------------------------------------
+# Display console output
+#--------------------------------------------------------------------------------------------------------
+class ConsoleView(PGui.QGroupBox):
+	def __init__(self):
+		super(ConsoleView,self).__init__()
+		self.setTitle("Console Output")
+		
+		self.output=PGui.QTextEdit()
+		self.output.setReadOnly(True)
+		
+		vbox=PGui.QVBoxLayout()
+		vbox.addWidget(self.output)
+		self.setLayout(vbox)
 
 
 #-------------------------------------------------------------------------------------------------------------------
@@ -238,8 +314,27 @@ class ProcessView(PGui.QGroupBox):
 		self.table.setEditTriggers(PGui.QAbstractItemView.NoEditTriggers)
 		
 		#Process
+		self.process=PCore.QProcess()
+		self.process.finished.connect(self.go_to_next)
+		self.process.setProcessChannelMode(PCore.QProcess.MergedChannels)
+		self.process.readyRead.connect(self.display_output)
 		self.isRunning=False
+		self.currentExperiment=None
 		
+		#console output
+		self.console=ConsoleView()
+
+	def display_output(self):
+		lines=str(self.process.readAll())
+		self.console.output.append(lines)
+		
+	def separator(self):
+		sep='<b>'+SEPARATOR+SEPARATOR+'</b> \n'
+		sep1='<b>'+str(self.currentExperiment.name)+'</b> \n'
+		sep2='<b>'+SEPARATOR+SEPARATOR+'</b>'
+		self.console.output.append(sep)
+		self.console.output.append(sep1)
+		self.console.output.append(sep2)
 
 	def update_table(self):
 		self.table.clear()
@@ -284,88 +379,41 @@ class ProcessView(PGui.QGroupBox):
 				print "New Client:",ip
 				self.update_table()
 				#connect client input to functions
-				self.clientDict[ip].hasQuit.connect(self.update_table)
-				self.clientDict[ip].hasList.connect(self.client_has_list)
+				self.clientDict[ip].hasUpdate.connect(self.update_table)
+				self.clientDict[ip].hasNewExperiment.connect(self.try_launch_process)
 
 
-	#client has new file to process
-	def client_has_list(self,ip):
-		self.update_table()
-		for name,experiment in self.clientDict[ip].experimentDict.items():
-			if experiment.state=="found in NAS":
-				#copy the folder from the NAS to the server
-				if self.copy_NAS_to_server(experiment.pathNAS):
-					#copy was successful
-					self.clientDict[ip].experimentDict[name].state="transfered to server"
-				else:
-					#could not copy
-					self.clientDict[ip].experimentDict[name].state="could not transfer to server"
-				self.update_table()
-		
+	def try_launch_process(self):
 		if not self.isRunning:
-			#prmFile=self.clientDict[ip].toProcessList[0]
-			#self.run_one(prmFile)
-			pass
-		
-		
-	def copy_NAS_to_server(self,pathNAS):
-		try:
-			#extract folder path and folder name from prmFile path
-			folderPath='/'.join(pathNAS.split('/')[:-1])
-			folderName=pathNAS.split('/')[-2]
-			
-			#Move entire folder from NAS to server
-			os.system('cp -r '+folderPath+' '+SERVER_PATH+'/')
-			print('copy cp -r '+folderPath+' '+SERVER_PATH+'/')
-			return True
-		except Exception,e:
-			print "could not copy, move on"
-			print "exception:",e
-			return False
-		
-		
-	def run_one(self,prmFile):
-		pass
-		
-		
-		#print "Server: dealing with prmFile",prmFile
-		#arguments=[prmFile] + ARGUMENTS
-		
-		#self.currentName=prmFile.split('/')[-1]
-		
-		#self.pathNAS=self.locate(self.currentName,NAS_PATH)
-		
-		#if self.pathNAS!="":
-		
-			#self.folderPathNAS='/'.join(self.pathNAS.split('/')[:-1])
-		
-			#self.folderName=self.pathNAS.split('/')[-2]
-			
-			#print "path given by client:",prmFile
-			#print "corresponding file on NAS:", self.pathNAS
-			
-			##Move file from NAS to server
-			#os.system('cp -r '+self.folderPathNAS+' '+SERVER_PATH+'/')
-			#print 'Just did: cp -r '+self.folderPathNAS+' '+SERVER_PATH+'/'
-			
-			#self.process.setWorkingDirectory(SERVER_PATH+'/'+self.folderName)
-			#print "Working directory",SERVER_PATH+'/'+self.folderName
-			
-			#self.process.start(self.program,arguments)
-			#print "Processing file "+str(self.nbFileDone+1)+"/"+str(self.nbFile)+": "+str(self.currentName)
-		#else:
-			#print "could not find file in NAS"
-			#self.go_to_next(1)
+			if self.find_file_to_process():
+				self.isRunning=True
+				self.separator()
+				self.currentExperiment.run_klusta(self.process)
+			else:
+				print "no file to process"
+		else:
+			print "already running"
 
+	def find_file_to_process(self):
+		for ip,client in self.clientDict.items():
+			for name,experiment in client.experimentDict.items():
+				if experiment.isTransfered and not experiment.isDone:
+					self.currentExperiment=experiment
+					return True
+		self.currentExperiment=None
+		return False
 
+	def go_to_next(self,exitcode):
+		self.currentExperiment.is_done(exitcode)
+		if self.find_file_to_process():
+			self.separator()
+			self.currentExperiment.run_klusta(self.process)
+		else:
+			self.isRunning=False
+		
+			
+		
 
-#-------------------------------------------------------------------------------------------------------------------
-# Display console output
-#--------------------------------------------------------------------------------------------------------
-class ConsoleView(PGui.QGroupBox):
-	def __init__(self):
-		super(ConsoleView,self).__init__()
-		self.setTitle("Console Output")
 
 
 
@@ -379,7 +427,6 @@ class MainWindow(PGui.QWidget):
 		#Views
 		self.serverView=ServerView()
 		self.processView=ProcessView()
-		self.consoleView=ConsoleView()
 		
 		#connect view
 		self.serverView.button_listen.toggled.connect(self.listen)
@@ -388,17 +435,16 @@ class MainWindow(PGui.QWidget):
 		self._layout()
 		
 	def _layout(self):
-		
 		WIDTH=800
 		HEIGHT=600
 		
-		self.consoleView.setMinimumSize(WIDTH/2 -20,HEIGHT*0.75)
+		self.processView.console.setMinimumSize(WIDTH/2 -20,HEIGHT*0.75)
 		self.processView.table.setMinimumSize(WIDTH/2 -20,HEIGHT -20)
 		
 		group=PGui.QWidget()
 		vbox=PGui.QVBoxLayout()
 		vbox.addWidget(self.serverView)
-		vbox.addWidget(self.consoleView)
+		vbox.addWidget(self.processView.console)
 		group.setLayout(vbox)
 		
 		splitter=PGui.QSplitter(PCore.Qt.Horizontal)
@@ -424,134 +470,9 @@ class MainWindow(PGui.QWidget):
 				return
 			print "Server listen for new connections"
 		else:
-			self.serverView.server.close()
+			self.processView.server.close()
 			print "Server close: not accepting new clients"
-
-
-		#self.clientList=[]
-		
-		#self.program=PROGRAM
-		#self.prmFileList=[]
-		#self.nbFile=0
-		#self.nbFileDone=0
-		#self.errorsList=[]
-		#self.successList=[]
-		#self.currentName=""
-		
-		#self.stopNext=False
-		#self.isRunning=False
-		
-		#self._labels()
-		#self._buttons()
-		#self._layout()
-
-
-	#def new_client(self):
-		#
-	
-	#def client_quit(self,ip):
-		#print "client ",ip, "has quit"
-		#self.connectedList.remove(ip)
-		#self.label_connectedList.setText("Client(s) connected:\n"+"\n".join(self.connectedList))
-		
-	#def client_feed_list(self,ID):
-		#self.prmFileList+=self.clientList[ID].prmFileList
-		#print "full list: ",self.prmFileList
-		#self.nbFile=len(self.prmFileList)
-		
-		#if not self.isRunning:
-			#self.isRunning=True
-			#self.process=PCore.QProcess()
-			#self.nbFileDone=0
-			#self.currentName=""
 			
-			##dealing with the klusta environment
-			#env = PCore.QProcess.systemEnvironment()
-			#itemToReplace=[item for item in env if item.startswith('PATH=')]
-			#for item in itemToReplace:
-				#newitem=item.replace('/anaconda/bin:','/anaconda/envs/klusta/bin:')
-				#env.remove(item)
-				#env.append(newitem)
-			#self.process.setEnvironment(env)
-			
-			#self.process.finished.connect(self.go_to_next)
-			#self.run_one(self.prmFileList[0])
-
-
-	#def run_one(self,prmFile):
-		#print "ProcessManager Server: dealing with prmFile",prmFile
-		#arguments=[prmFile] + ARGUMENTS
-		
-		#self.currentName=prmFile.split('/')[-1]
-		
-		#self.pathNAS=self.locate(self.currentName,NAS_PATH)
-		
-		#if self.pathNAS!="":
-		
-			#self.folderPathNAS='/'.join(self.pathNAS.split('/')[:-1])
-		
-			#self.folderName=self.pathNAS.split('/')[-2]
-			
-			#print "path given by client:",prmFile
-			#print "corresponding file on NAS:", self.pathNAS
-			
-			##Move file from NAS to server
-			#os.system('cp -r '+self.folderPathNAS+' '+SERVER_PATH+'/')
-			#print 'Just did: cp -r '+self.folderPathNAS+' '+SERVER_PATH+'/'
-			
-			#self.process.setWorkingDirectory(SERVER_PATH+'/'+self.folderName)
-			#print "Working directory",SERVER_PATH+'/'+self.folderName
-			
-			#self.process.start(self.program,arguments)
-			#print "Processing file "+str(self.nbFileDone+1)+"/"+str(self.nbFile)+": "+str(self.currentName)
-		#else:
-			#print "could not find file in NAS"
-			#self.go_to_next(1)
-		
-		
-	#def locate(self,filename,root):
-		#
-		#return ""
-
-		
-	#def go_to_next(self,exitcode):
-		#if exitcode!=0:
-			#print "ProcessManager Server: exitcode",exitcode
-			#self.errorsList.append(self.currentName)
-			#print("Klusta crashed with file(s): \n"+'\n'.join(self.errorsList))
-		#else:
-			#self.successList.append(self.currentName)
-			#print("Klusta ran with file(s): \n"+'\n'.join(self.successList))
-			#for files in os.listdir(SERVER_PATH+'/'+self.folderName):
-				#if not files.endswith(".dat") and not files.endswith('.raw.kwd'):
-					#os.system('cp '+SERVER_PATH+'/'+files+' '+self.folderPathNAS+'/'+files)
-					#print 'Just did cp '+SERVER_PATH+'/'+files+' '+self.folderPathNAS+'/'+files
-
-		#self.nbFileDone+=1
-		
-		#if self.nbFile==self.nbFileDone:
-			#print "ProcessManager Server: every file was processed"
-			#print("List done")
-			#self.prmFileList=[]
-			#self.nbFile=0
-			#self.nbFileDone=0
-			#self.currentName=""
-			#self.process.close()
-			#self.isRunning=False
-		##elif self.stopNext:
-			##print "ProcessManager: stop next"
-			##self.label_general.setText("<b>List done partially:</b> "+str(self.nbFileDone)+"/"+str(self.nbFile))
-			##self.button_clear.setEnabled(True)
-			##self.prmFileList=[]
-			##self.nbFile=0
-			##self.nbFileDone=0
-			##self.currentName=""
-			##self.process.close()
-			##self.button_stopNext.setEnabled(False)
-		#else:
-			#print "ProcessManager Server: move to next file"
-			#self.run_one(self.prmFileList[self.nbFileDone])
-		
 
 if __name__=='__main__':
 	PGui.QApplication.setStyle("cleanlooks")

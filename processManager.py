@@ -14,7 +14,7 @@ from tabRemote import TabRemote
 
 
 #if start alone, will process LIST
-LIST=["/home/david/dataRat/Rat034_small/Rat034_small2.pr","/home/david/dataRat/Rat034_small/DoNotExist.prm","/home/david/dataRat/Rat034_small/Rat034_small.prm"]
+LIST=["/home/david/dataRat/Rat034_small/Rat034_small_number2.prm","/home/david/dataRat/Rat034_small/DoNotExist.prm","/home/david/dataRat/Rat034_small/Rat034_small.prm"]
 
 
 class ProcessManager(PGui.QTabWidget):
