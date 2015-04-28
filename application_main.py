@@ -12,14 +12,14 @@ from fileBrowser import FileBrowser
 from experimentModel import ExperimentModel, Experiment
 
 #Path to your data folder
-ROOT='/home/david/dataRat'
+ROOT='./test'
 
 #Property of the window
 WIDTH=1200
 HEIGHT=1000
 MIN_WIDTH=int(WIDTH*0.75)
 MIN_HEIGHT=int(HEIGHT*0.75)
-TITLE="Process Manager"
+TITLE="FileBrowser + Process Manager"
 
 
 class LogView(PGui.QGroupBox):
@@ -80,6 +80,7 @@ class MainWindow(PGui.QWidget):
 		#Create Vertical Splitter, with the top splitter and bottom pannel
 		splitterVertical=PGui.QSplitter(PCore.Qt.Vertical)
 		splitterVertical.addWidget(splitterTop)
+		splitterVertical.addWidget(self.logView)
 		splitterVertical.addWidget(self.processManager)
 		splitterVertical.setChildrenCollapsible(False)
 		self.processManager.setMinimumSize(MIN_WIDTH,int(MIN_HEIGHT/2))
@@ -94,7 +95,72 @@ class MainWindow(PGui.QWidget):
 
 	#Convert selection of tree view into Experiment object to add to experimentModel
 	def add_to_process_manager(self):
-		pass
+		selection=sorted(self.fileBrowser.tree.selectedIndexes())
+		for item in selection:
+			nbAdd=0
+			if item.column()==0:
+				name=item.data()
+				type=self.fileBrowser.model.type(item)
+				if type=='Folder':
+					path_folder=self.fileBrowser.model.filePath(item)
+					for filename in os.listdir(path_folder):
+						if filename.endswith('.prm'):
+							name_prmFile=filename
+							if self.check_prm_file(path_folder,name_prmFile):
+								nbAdd+=1
+		if nbAdd==0:
+			self.sendsMessage.emit("Nothing new to add")
+		else:
+			self.sendsMessage.emit("Added %i file(s)"%nbAdd)
+							
+							
+				
+				
+	#Check if we should be able to process the prmfile
+	def check_prm_file(self,path_folder,name_prmFile):
+		path_prmFile=path_folder+"/"+name_prmFile
+		with open(path_prmFile,'r') as fPRM:
+			nbFound=0
+			for line in fPRM.readlines():
+				if line.startswith("experiment_name"):
+					experiment_name=line.split("=")[-1].strip()[1:-1]
+					nbFound+=1
+				elif line.startswith("raw_data_files"):
+					data_name=line.split("=")[-1].strip()[1:-1]
+					nbFound+=1
+				elif line.startswith("prb_file"):
+					prb_name=line.split("=")[-1].strip()[1:-1]
+					nbFound+=1
+				if nbFound>=3:
+					break
+			#check if we found everything
+			if nbFound<3:
+				print "PRM file is incorrect:",path_prmFile
+				return False
+			#experiment name has to match folder name
+			name_folder=path_folder.split("/")[-1]
+			if experiment_name!=name_folder:
+				print "Experiment name don't match folder name",path_prmFile
+				return False
+			#check if the raw data and prb file are in the folder
+			listFile=os.listdir(path_folder)
+			if (data_name not in listFile) or (prb_name not in listFile):
+				print "Could not find raw data or PRB file in folder",path_prmFile
+				return False
+			
+			#if everything is ok
+			experiment=Experiment(name=experiment_name,prmFile=path_prmFile,rawData=data_name,prb=prb_name)
+			if not self.processManager.add_experiment(experiment):
+				print "Experiment already in list"
+				del experiment
+				return False
+			else:
+				print "Added to model:",path_prmFile
+				return True
+			
+
+						
+				
 		#string_toAdd=[]
 		#selection=sorted(self.fileBrowser.tree.selectedIndexes())
 		#for item in selection:

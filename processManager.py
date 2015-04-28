@@ -14,12 +14,44 @@ SEPARATOR='---'*15
 
 #Command to perform on list
 PROGRAM="klusta"
-ARGUMENTS=["--overwrite"]
+ARGUMENTS=[]
+ARGUMENTS_RESTART=["--overwrite"]
 
 #Connection to remote computer
 IP="10.51.101.29"
 HOST=PNet.QHostAddress(IP) 
 PORT=8000
+
+
+class ConsoleView(PGui.QWidget):
+	
+	def __init__(self):
+		super(ConsoleView,self).__init__()
+		
+		#output
+		self.output=PGui.QTextEdit()
+		self.output.setReadOnly(True)
+
+		#buttons
+		self.button_clear=PGui.QPushButton("Clear output")
+		self.button_clear.clicked.connect(self.output.clear)
+		
+		#Layout
+		vbox=PGui.QVBoxLayout()
+		vbox.addWidget(self.output)
+		vbox.addWidget(self.button_clear)
+		self.setLayout(vbox)
+		
+	def display(self,lines):
+		self.output.append(lines)
+		
+	def separator(self,name):
+		sep='<b>'+SEPARATOR+SEPARATOR+'</b> \n'
+		sep1='<b> Experiment: '+str(name)+'</b> \n'
+		sep2='<b>'+SEPARATOR+SEPARATOR+'</b>'
+		self.output.append(sep)
+		self.output.append(sep1)
+		self.output.append(sep2)
 
 
 class ProcessManager(PGui.QWidget):
@@ -29,13 +61,22 @@ class ProcessManager(PGui.QWidget):
 		
 		#experimentModel
 		self.model=ExperimentModel()
+		self.model.changeChecked.connect(self.update_buttons)
+		
+		#table View
 		self.tableView=PGui.QTableView()
 		self.tableView.setModel(self.model)
 		self.tableView.horizontalHeader().setResizeMode(PGui.QHeaderView.Stretch)
 		
-		#console output
-		self.console=PGui.QTextEdit()
-		self.console.setReadOnly(True)
+		#console
+		self.console=ConsoleView()
+		
+		#log
+		self.logFrame=PGui.QGroupBox("Log")
+		self.log=PGui.QLabel("")
+		layout=PGui.QHBoxLayout()
+		layout.addWidget(self.log)
+		self.logFrame.setLayout(layout)
 		
 		#process Here
 		self.process=PCore.QProcess()
@@ -71,25 +112,47 @@ class ProcessManager(PGui.QWidget):
 
 	def _buttons(self):
 		#process here
-		self.button_processHere=PGui.QPushButton("\nProcess here\n")
+		self.button_processHere=PGui.QPushButton("\nProcess here\n (klusta) \n")
 		self.button_processHere.clicked.connect(self.process_here)
+		self.button_processHere.setToolTip("On this computer, process the selected experiments (if they were not already process)")
 		
 		#process on server
 		self.button_connectServer=PGui.QPushButton("\nConnect to server\n")
+		self.button_connectServer.setEnabled(False)
 		self.button_processServer=PGui.QPushButton("\nProcess on server\n")
 		
 		#on a selection
 		self.button_cancel=PGui.QPushButton("Cancel")
 		self.button_cancel.clicked.connect(self.cancel)
+		self.button_cancel.setToolTip("The selected experiments waiting to be processed will not be processed")
 		self.button_remove=PGui.QPushButton("Remove/Kill")
 		self.button_remove.clicked.connect(self.remove)
-		self.button_restart=PGui.QPushButton("Restart")
+		self.button_remove.setToolTip("The selected experiments will be removed from the list.\n Waiting experiment will not be processed.\n Running experiments will be killed after a warning message")
+		self.button_restart=PGui.QPushButton("Restart\n (klusta --overwrite)")
+		self.button_restart.setToolTip("Restarts the selected experiments (if they were already processed or crashed)")
+		self.button_restart.clicked.connect(self.restart)
 		
 		#on everything
 		self.button_clear=PGui.QPushButton("Clear")
-		self.button_save=PGui.QPushButton("Save list")
-		self.button_load=PGui.QPushButton("Load list")
+		self.button_clear.clicked.connect(self.clear_list)
+		self.button_clear.setToolTip("Keeps only experiments being or waiting to be processed")
+		self.button_selectAll=PGui.QPushButton("Select All")
+		self.button_selectAll.clicked.connect(self.model.selectAll)
+		self.button_selectNone=PGui.QPushButton("Select None")
+		self.button_selectNone.clicked.connect(self.model.selectNone)
 
+	def update_buttons(self,nbChecked):
+		if nbChecked>0:
+			boolean=True
+		else:
+			boolean=False
+		self.button_processHere.setEnabled(boolean)
+		self.button_cancel.setEnabled(boolean)
+		self.button_remove.setEnabled(boolean)
+		self.button_restart.setEnabled(boolean)
+		
+		
+		
 	def _layout(self):
 		frame_selection=PGui.QGroupBox("On selection")
 		vbox_selection=PGui.QVBoxLayout()
@@ -112,12 +175,13 @@ class ProcessManager(PGui.QWidget):
 		
 		hbox_everything=PGui.QHBoxLayout()
 		hbox_everything.addWidget(self.button_clear)
-		hbox_everything.addWidget(self.button_save)
-		hbox_everything.addWidget(self.button_load)
-		
+		hbox_everything.addWidget(self.button_selectAll)
+		hbox_everything.addWidget(self.button_selectNone)
+
 		vbox1=PGui.QVBoxLayout()
 		vbox1.addWidget(self.tableView)
 		vbox1.addLayout(hbox_everything)
+		vbox1.addWidget(self.logFrame)
 		
 		vbox2=PGui.QVBoxLayout()
 		vbox2.addWidget(frame_server)
@@ -130,15 +194,20 @@ class ProcessManager(PGui.QWidget):
 		self.setLayout(hbox)
 		
 		
+	#Return false if experiment already in list
 	def add_experiment(self,experiment):
-		self.model.add_experiment(experiment)
+		return self.model.add_experiment(experiment)
 		
+	def clear_list(self):
+		nbRemove=self.model.clear()
+		self.log.setText("Clear: removed %i experiment(s)" %nbRemove)
 		
 	#user click on Process Here: 
 	# -update status of experiments "ready to be process" -> "waiting to be process"
 	# -if klusta not already running, starts klusta
 	def process_here(self):
-		self.model.selectionUpdate_process_here()
+		nbFound=self.model.selectionUpdate_process_here()
+		self.log.setText("Process Here: found %i experiment(s) to process" %nbFound)
 		if not self.isRunning:
 			if self.model.get_first_to_process():
 				self.run_one()
@@ -146,23 +215,43 @@ class ProcessManager(PGui.QWidget):
 	#user click cancel: 
 	#"waiting to be process" -> None
 	def cancel(self):
-		self.model.selectionUpdate_cancel()
+		nbFound=self.model.selectionUpdate_cancel()
+		self.log.setText("Canceled %i experiment(s)" %nbFound)
 		
+	#restart the selection (if experiment isDone)
+	def restart(self):
+		nbFound=self.model.selectionUpdate_restart()
+		self.log.setText("Restarted %i experiment(s)" %nbFound)
+		if not self.isRunning:
+			if self.model.get_first_to_process():
+				self.run_one()
+	
+	#remove selection from the list
+	#if current process in the list, kill it
 	def remove(self):
-		self.model.selectionUpdate_remove()
-			
+		killCurrent,nbFound=self.model.selectionUpdate_remove()
+		self.log.setText("Removed %i experiment(s)" %nbFound)
+		if killCurrent:
+			self.process.kill()
+			self.log.setText("Removed %i experiment(s) - Killed 1 experiment" %nbFound)
+
 	#run klusta on one experiment
 	def run_one(self):
 		if self.model.currentExperiment!=None:
+			name=self.model.currentExperiment.name
 			path_prmFile=self.model.currentExperiment.prmFile
 			name_prmFile=path_prmFile.split('/')[-1]
 			path_folder=self.model.currentExperiment.folder
-			arguments=[name_prmFile]+ARGUMENTS
+			
+			if self.model.currentExperiment.restart:
+				arguments=[name_prmFile]+ARGUMENTS_RESTART
+			else:
+				arguments=[name_prmFile]+ARGUMENTS
 		
 			print "Working directory:",path_folder
 			print "Do: ",PROGRAM," ".join(arguments)
 		
-			self.separator()
+			self.console.separator(name)
 			self.process.setWorkingDirectory(path_folder)
 			self.process.start(PROGRAM,arguments)
 		
@@ -179,20 +268,11 @@ class ProcessManager(PGui.QWidget):
 		else:
 			self.process.close()
 
-	#print a separator on the console view
-	def separator(self):
-		currentName=self.model.currentExperiment.name
-		sep='<b>'+SEPARATOR+SEPARATOR+'</b> \n'
-		sep1='<b> Experiment: '+str(currentName)+'</b> \n'
-		sep2='<b>'+SEPARATOR+SEPARATOR+'</b>'
-		self.console.append(sep)
-		self.console.append(sep1)
-		self.console.append(sep2)
 
 	#print output of the console in the console view
 	def display_output(self):
 		lines=str(self.process.readAll())
-		self.console.append(lines)
+		self.console.display(lines)
 
 
 
@@ -214,8 +294,7 @@ if __name__=='__main__':
 	win.model.add_experiment(exp1)
 	win.model.add_experiment(exp2)
 	
-	
-	win.setMinimumSize(900,600)
+	win.setMinimumSize(1000,600)
 
 	win.show()
 
