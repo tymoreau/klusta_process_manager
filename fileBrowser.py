@@ -24,19 +24,19 @@ class FileBrowser(PGui.QGroupBox):
 		self.tree.connect(self.tree.selectionModel(),PCore.SIGNAL("selectionChanged(QItemSelection, QItemSelection)"),self.on_selection_change)
 		
 	def _buttons(self):
-		self.button_prm=PGui.QPushButton("Create prm and prb files \n in selected folders")
+		self.button_prm=PGui.QPushButton("\n Create prm and prb files \n")
 		self.button_prm.clicked.connect(self.create_prm_prb)
 		self.button_prm.setEnabled(False)
 		
-		self.button_loadPRB=PGui.QPushButton("Load PRB model")
-		self.button_loadPRB.clicked.connect(self.load_PRB)
-		self.label_PRB=PGui.QLabel("No PRB model                                    ")
-		
-		self.button_loadPRM=PGui.QPushButton("Load PRM model")
-		self.button_loadPRM.clicked.connect(self.load_PRM)
+		self.button_load=PGui.QPushButton("\n Load PRB/PRM model \n")
+		self.button_load.clicked.connect(self.load)
+		self.label_PRB=PGui.QLabel("No PRB model")
 		self.label_PRM=PGui.QLabel("No PRM model")
 		
-		self.button_add=PGui.QPushButton("Add selection \n to list")
+		#self.button_add=PGui.QToolButton()
+		#self.button_add.setArrowType(PCore.Qt.DownArrow)
+		self.button_add=PGui.QPushButton(PGui.QIcon("images/downarrow.png")," ")
+		
 		self.button_add.setEnabled(False)
 		
 	def _model(self):
@@ -54,54 +54,51 @@ class FileBrowser(PGui.QGroupBox):
 		
 	def _layout(self):
 		grid=PGui.QGridLayout()
-		grid.addWidget(self.button_loadPRM,0,0)
+		grid.addWidget(self.button_load,0,0,2,1)
 		grid.addWidget(self.label_PRM,0,1)
-		grid.addWidget(self.button_loadPRB,1,0)
 		grid.addWidget(self.label_PRB,1,1)
 		
 		hbox=PGui.QHBoxLayout()
-		hbox.addLayout(grid)
-		hbox.addWidget(self.button_prm)
 		hbox.addWidget(self.button_add)
+		hbox.addStretch(1)
+		hbox.addWidget(self.button_prm)
+		hbox.addLayout(grid)
+		hbox.addStretch(1)
 		
 		vbox=PGui.QVBoxLayout()
 		vbox.addWidget(self.tree)
 		vbox.addLayout(hbox)
 		self.setLayout(vbox)
-	
-	def load_PRB(self):
+		
+	def load(self):
 		filebox=PGui.QFileDialog(self,"Load model for PRB file")
-		filebox.setFileMode(PGui.QFileDialog.AnyFile)
-		filebox.setNameFilter("PRB (*.prb)")
+		filebox.setFileMode(PGui.QFileDialog.ExistingFiles)
+		filebox.setNameFilters(["PRB/PRM (*.prm *.prb)"])
 		filebox.setOptions(PGui.QFileDialog.DontUseNativeDialog)
 		if filebox.exec_():
-			self.prbModel=filebox.selectedFiles()[0]
-			self.label_PRB.setText(self.prbModel)
-			if len(self.tree.selectedIndexes())!=0 and self.prmModel!=0:
-				self.button_prm.setEnabled(True)
-			
-	def load_PRM(self):
-		filebox=PGui.QFileDialog(self,"Load model for PRM file")
-		filebox.setFileMode(PGui.QFileDialog.AnyFile)
-		filebox.setNameFilter("PRM (*.prm)")
-		filebox.setOptions(PGui.QFileDialog.DontUseNativeDialog)
-		if filebox.exec_():
-			self.prmModel=filebox.selectedFiles()[0]
-			self.label_PRM.setText(self.prmModel)
-			if len(self.tree.selectedIndexes())!=0 and self.prbModel!=0:
+			for selectedFile in filebox.selectedFiles():
+				if selectedFile.endswith(".prm"):
+					self.prmModel=selectedFile
+					namePRM=selectedFile.split("/")[-1]
+					self.label_PRM.setText(namePRM)
+					self.sendsMessage.emit("Set parameter Model: "+namePRM)
+				elif selectedFile.endswith(".prb"):
+					self.prbModel=selectedFile
+					namePRB=selectedFile.split("/")[-1]
+					self.label_PRB.setText(namePRB)
+					self.sendsMessage.emit("Set probe Model: "+namePRB)
+
+			if len(self.tree.selectedIndexes())!=0 and self.prbModel!=0 and self.prmModel!=0:
 				self.button_prm.setEnabled(True)
 
 	def create_prm_prb(self):
-		if self.prmModel==0 or self.prbModel==0:
-			msgbox=PGui.QMessageBox()
-			msgbox.setText("Can't do : missing a PRB or PRM model")
-			msgbox.exec_()
+		if self.prbModel==0 or self.prmModel==0:
+			self.sendsMessage.emit("Can't do : missing a PRB or PRM model")
 		else:
-			nbSuccess=0
-			nbError=0
+			self.sendsMessage.emit("\n******** create prm and prb")
 			selection=self.tree.selectedIndexes()
 			for item in selection:
-				if item.column()==0 and item.sibling(item.row(),2).data()=='Folder':
+				if item.column()==0 and self.model.type(item)=="Folder":
 					path=self.model.filePath(item)
 					baseName=item.data()
 					prbName=baseName+".prb"
@@ -111,8 +108,7 @@ class FileBrowser(PGui.QGroupBox):
 					if dataName not in os.listdir(path):
 						dataName=baseName+'.dat'
 						if dataName not in os.listdir(path):
-							print "no raw data for folder",baseName
-							nbError+=1
+							self.sendsMessage.emit("*** "+basename+": no raw data")
 							continue #to the next item in selection
 
 					os.system('cp '+self.prbModel+" "+path+"/"+prbName)
@@ -131,13 +127,7 @@ class FileBrowser(PGui.QGroupBox):
 						fPRM.seek(0)
 						fPRM.write(''.join(outputPRM))
 						fPRM.truncate()
-					nbSuccess+=1
-					
-				if nbSuccess+nbError==0:
-					self.sendsMessage.emit("no folder in selection")
-				else:
-					msg="Created PRM/PRB - Success:"+str(nbSuccess)+" Fail:"+str(nbError)
-					self.sendsMessage.emit(msg)
+						self.sendsMessage.emit("*** "+baseName+": ok")
 
 
 	def on_selection_change(self,selected,deselected):

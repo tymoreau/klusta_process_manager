@@ -28,11 +28,15 @@ class LogView(PGui.QGroupBox):
 		super(LogView,self).__init__()
 		
 		self.setTitle("Log")
-		self.label=PGui.QLabel("")
+		self.view=PGui.QTextEdit()
+		self.view.setReadOnly(True)
 		
 		hbox=PGui.QHBoxLayout()
-		hbox.addWidget(self.label)
+		hbox.addWidget(self.view)
 		self.setLayout(hbox)
+	
+	def add_message(self,message):
+		self.view.append(message)
 
 
 class MainWindow(PGui.QWidget):
@@ -48,14 +52,11 @@ class MainWindow(PGui.QWidget):
 
 		#Connect views
 		self.fileBrowser.button_add.clicked.connect(self.add_to_process_manager)
-		#self.processManager.tabHere.button_processList.clicked.connect(self.process_list_here)
-		#self.listToProcess.becomesEmpty.connect(lambda: self.processManager.tabHere.button_processList.setEnabled(False))
-		#self.listToProcess.becomesFill.connect(lambda: self.processManager.tabHere.button_processList.setEnabled(True))
-		
+
 		#Connect message to log
-		#self.listToProcess.sendsMessage.connect(self.logView.label.setText)
-		self.fileBrowser.sendsMessage.connect(self.logView.label.setText)
-		self.sendsMessage.connect(self.logView.label.setText)
+		self.fileBrowser.sendsMessage.connect(self.logView.add_message)
+		self.processManager.sendsMessage.connect(self.logView.add_message)
+		self.sendsMessage.connect(self.logView.add_message)
 
 		#Layout
 		self._layout()
@@ -69,7 +70,7 @@ class MainWindow(PGui.QWidget):
 		
 		#Add the treeview and the selection list
 		splitterTop.addWidget(self.fileBrowser)
-		#splitterTop.addWidget(self.logView)
+		splitterTop.addWidget(self.logView)
 		splitterTop.setMinimumSize(MIN_WIDTH,int(MIN_HEIGHT/2))
 
 		#Add buttons in the handle of the top splitter
@@ -80,7 +81,6 @@ class MainWindow(PGui.QWidget):
 		#Create Vertical Splitter, with the top splitter and bottom pannel
 		splitterVertical=PGui.QSplitter(PCore.Qt.Vertical)
 		splitterVertical.addWidget(splitterTop)
-		splitterVertical.addWidget(self.logView)
 		splitterVertical.addWidget(self.processManager)
 		splitterVertical.setChildrenCollapsible(False)
 		self.processManager.setMinimumSize(MIN_WIDTH,int(MIN_HEIGHT/2))
@@ -96,28 +96,27 @@ class MainWindow(PGui.QWidget):
 	#Convert selection of tree view into Experiment object to add to experimentModel
 	def add_to_process_manager(self):
 		selection=sorted(self.fileBrowser.tree.selectedIndexes())
+		self.sendsMessage.emit("\n******** add to list ")
 		for item in selection:
-			nbAdd=0
 			if item.column()==0:
 				name=item.data()
 				type=self.fileBrowser.model.type(item)
 				if type=='Folder':
 					path_folder=self.fileBrowser.model.filePath(item)
+					name_prmFile=""
 					for filename in os.listdir(path_folder):
 						if filename.endswith('.prm'):
 							name_prmFile=filename
-							if self.check_prm_file(path_folder,name_prmFile):
-								nbAdd+=1
-		if nbAdd==0:
-			self.sendsMessage.emit("Nothing new to add")
-		else:
-			self.sendsMessage.emit("Added %i file(s)"%nbAdd)
-							
-							
-				
-				
+							self.check_prm_file(path_folder,name_prmFile,name)
+							break
+					if name_prmFile=="":
+						self.sendsMessage.emit("*** "+str(name)+": do not have a prm file")
+				else:
+					self.sendsMessage.emit("*** "+str(name)+": not a folder")
+
+
 	#Check if we should be able to process the prmfile
-	def check_prm_file(self,path_folder,name_prmFile):
+	def check_prm_file(self,path_folder,name_prmFile,name):
 		path_prmFile=path_folder+"/"+name_prmFile
 		with open(path_prmFile,'r') as fPRM:
 			nbFound=0
@@ -135,27 +134,26 @@ class MainWindow(PGui.QWidget):
 					break
 			#check if we found everything
 			if nbFound<3:
-				print "PRM file is incorrect:",path_prmFile
+				self.sendsMessage.emit("*** "+str(name)+": prmFile is incorrect")
 				return False
 			#experiment name has to match folder name
-			name_folder=path_folder.split("/")[-1]
-			if experiment_name!=name_folder:
-				print "Experiment name don't match folder name",path_prmFile
+			if experiment_name!=name:
+				self.sendsMessage.emit("*** "+str(name)+": experiment name don't match folder name")
 				return False
 			#check if the raw data and prb file are in the folder
 			listFile=os.listdir(path_folder)
 			if (data_name not in listFile) or (prb_name not in listFile):
-				print "Could not find raw data or PRB file in folder",path_prmFile
+				self.sendsMessage.emit("*** "+str(name)+": could not find raw data or PRB file in folder")
 				return False
 			
 			#if everything is ok
 			experiment=Experiment(name=experiment_name,prmFile=path_prmFile,rawData=data_name,prb=prb_name)
 			if not self.processManager.add_experiment(experiment):
-				print "Experiment already in list"
+				self.sendsMessage.emit("*** "+str(name)+": already in list")
 				del experiment
 				return False
 			else:
-				print "Added to model:",path_prmFile
+				self.sendsMessage.emit("*** "+str(name)+": added to list")
 				return True
 			
 

@@ -55,6 +55,7 @@ class ConsoleView(PGui.QWidget):
 
 
 class ProcessManager(PGui.QWidget):
+	sendsMessage=PCore.Signal(object)
 
 	def __init__(self):
 		super(ProcessManager,self).__init__()
@@ -70,13 +71,6 @@ class ProcessManager(PGui.QWidget):
 		
 		#console
 		self.console=ConsoleView()
-		
-		#log
-		self.logFrame=PGui.QGroupBox("Log")
-		self.log=PGui.QLabel("")
-		layout=PGui.QHBoxLayout()
-		layout.addWidget(self.log)
-		self.logFrame.setLayout(layout)
 		
 		#process Here
 		self.process=PCore.QProcess()
@@ -98,6 +92,7 @@ class ProcessManager(PGui.QWidget):
 		#Layout
 		self._edits()
 		self._buttons()
+		self.update_buttons(False)
 		self._layout()
 		
 		
@@ -151,8 +146,6 @@ class ProcessManager(PGui.QWidget):
 		self.button_remove.setEnabled(boolean)
 		self.button_restart.setEnabled(boolean)
 		
-		
-		
 	def _layout(self):
 		frame_selection=PGui.QGroupBox("On selection")
 		vbox_selection=PGui.QVBoxLayout()
@@ -181,7 +174,6 @@ class ProcessManager(PGui.QWidget):
 		vbox1=PGui.QVBoxLayout()
 		vbox1.addWidget(self.tableView)
 		vbox1.addLayout(hbox_everything)
-		vbox1.addWidget(self.logFrame)
 		
 		vbox2=PGui.QVBoxLayout()
 		vbox2.addWidget(frame_server)
@@ -200,14 +192,14 @@ class ProcessManager(PGui.QWidget):
 		
 	def clear_list(self):
 		nbRemove=self.model.clear()
-		self.log.setText("Clear: removed %i experiment(s)" %nbRemove)
+		self.sendsMessage.emit("Clear: removed %i experiment(s)" %nbRemove)
 		
 	#user click on Process Here: 
 	# -update status of experiments "ready to be process" -> "waiting to be process"
 	# -if klusta not already running, starts klusta
 	def process_here(self):
 		nbFound=self.model.selectionUpdate_process_here()
-		self.log.setText("Process Here: found %i experiment(s) to process" %nbFound)
+		self.sendsMessage.emit("Process Here: found %i experiment(s) to process" %nbFound)
 		if not self.isRunning:
 			if self.model.get_first_to_process():
 				self.run_one()
@@ -216,12 +208,12 @@ class ProcessManager(PGui.QWidget):
 	#"waiting to be process" -> None
 	def cancel(self):
 		nbFound=self.model.selectionUpdate_cancel()
-		self.log.setText("Canceled %i experiment(s)" %nbFound)
+		self.sendsMessage.emit("Canceled %i experiment(s)" %nbFound)
 		
 	#restart the selection (if experiment isDone)
 	def restart(self):
 		nbFound=self.model.selectionUpdate_restart()
-		self.log.setText("Restarted %i experiment(s)" %nbFound)
+		self.sendsMessage.emit("Restarted %i experiment(s)" %nbFound)
 		if not self.isRunning:
 			if self.model.get_first_to_process():
 				self.run_one()
@@ -230,10 +222,10 @@ class ProcessManager(PGui.QWidget):
 	#if current process in the list, kill it
 	def remove(self):
 		killCurrent,nbFound=self.model.selectionUpdate_remove()
-		self.log.setText("Removed %i experiment(s)" %nbFound)
+		self.sendsMessage.emit("Removed %i experiment(s)" %nbFound)
 		if killCurrent:
 			self.process.kill()
-			self.log.setText("Removed %i experiment(s) - Killed 1 experiment" %nbFound)
+			self.sendsMessage.emit("Killed 1 experiment" %nbFound)
 
 	#run klusta on one experiment
 	def run_one(self):
@@ -248,8 +240,8 @@ class ProcessManager(PGui.QWidget):
 			else:
 				arguments=[name_prmFile]+ARGUMENTS
 		
-			print "Working directory:",path_folder
-			print "Do: ",PROGRAM," ".join(arguments)
+			self.sendsMessage.emit("Working directory:%s" %path_folder)
+			self.sendsMessage.emit("Do: %s %s" %(PROGRAM," ".join(arguments)))
 		
 			self.console.separator(name)
 			self.process.setWorkingDirectory(path_folder)
