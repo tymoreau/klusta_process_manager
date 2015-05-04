@@ -8,18 +8,17 @@ import sys
 import signal
 
 #Model
-from experimentModel import ExperimentModel,Experiment
+from experimentModel import ExperimentModel
 
 SEPARATOR='---'*15
 
 #Command to perform on list
 PROGRAM="klusta"
-ARGUMENTS=[]
-ARGUMENTS_RESTART=["--overwrite"]
+ARGUMENTS=["--cluster-only","--overwrite"]
+ARGUMENTS_RESTART=["--cluster-only","--overwrite"]
 
 #Connection to remote computer
 IP="10.51.101.29"
-HOST=PNet.QHostAddress(IP) 
 PORT=8000
 
 
@@ -72,6 +71,13 @@ class ProcessManager(PGui.QWidget):
 		#console
 		self.console=ConsoleView()
 		
+		#server
+		self.tcpSocket=PNet.QTcpSocket(self)
+		self.tcpSocket.error.connect(self.display_error)
+		self.tcpSocket.stateChanged.connect(self.on_state_change)
+		self.tcpSocket.disconnected.connect(self.on_disconnection)
+		self.tcpSocket.readyRead.connect(self.display_output_from_remote)
+		
 		#process Here
 		self.process=PCore.QProcess()
 		self.process.finished.connect(self.go_to_next)
@@ -90,21 +96,16 @@ class ProcessManager(PGui.QWidget):
 		self.process.setEnvironment(env)
 		
 		#Layout
-		self._edits()
 		self._buttons()
 		self.update_buttons(False)
+		self._edits()
+		self._frames()
 		self._layout()
 		
 		
-	def _edits(self):
-		self.label_ip=PGui.QLabel("IP")
-		self.edit_ip=PGui.QLineEdit(IP)
-		
-		self.label_port=PGui.QLabel("Port")
-		self.edit_port=PGui.QLineEdit(str(PORT))
-		self.edit_port.setValidator(PGui.QIntValidator(1,65535,self))
-		
-
+#---------------------------------------------------------------------------------------------------------
+	#Layout
+#---------------------------------------------------------------------------------------------------------
 	def _buttons(self):
 		#process here
 		self.button_processHere=PGui.QPushButton("\nProcess here\n (klusta) \n")
@@ -113,9 +114,11 @@ class ProcessManager(PGui.QWidget):
 		
 		#process on server
 		self.button_connectServer=PGui.QPushButton("\nConnect to server\n")
-		self.button_connectServer.setEnabled(False)
+		self.button_connectServer.clicked.connect(self.connect_to_server)
+	
 		self.button_processServer=PGui.QPushButton("\nProcess on server\n")
-		
+		#to do : click connect
+
 		#on a selection
 		self.button_cancel=PGui.QPushButton("Cancel")
 		self.button_cancel.clicked.connect(self.cancel)
@@ -142,53 +145,168 @@ class ProcessManager(PGui.QWidget):
 		else:
 			boolean=False
 		self.button_processHere.setEnabled(boolean)
+		self.button_processServer.setEnabled(boolean)
 		self.button_cancel.setEnabled(boolean)
 		self.button_remove.setEnabled(boolean)
 		self.button_restart.setEnabled(boolean)
 		
+	def _edits(self):
+		self.label_ip=PGui.QLabel("IP")
+		self.edit_ip=PGui.QLineEdit(IP)
+		
+		self.label_port=PGui.QLabel("Port")
+		self.edit_port=PGui.QLineEdit(str(PORT))
+		self.edit_port.setValidator(PGui.QIntValidator(1,65535,self))
+		
+	def _frames(self):
+		#server frame (not connected)
+		grid=PGui.QGridLayout()
+		grid.addWidget(self.label_ip,0,0)
+		grid.addWidget(self.edit_ip,0,1)
+		grid.addWidget(self.label_port,1,0)
+		grid.addWidget(self.edit_port,1,1)
+		grid.addWidget(self.button_connectServer,2,0,1,2)
+		self.frameServer=PGui.QGroupBox("Server")
+		self.frameServer.setLayout(grid)
+		
+		#"on selection" frame
+		self.vboxSelection=PGui.QVBoxLayout()
+		self.vboxSelection.addWidget(self.button_processHere)
+		self.vboxSelection.addWidget(self.button_processServer)
+		self.vboxSelection.addWidget(self.button_cancel)
+		self.vboxSelection.addWidget(self.button_remove)
+		self.vboxSelection.addWidget(self.button_restart)
+		frameSelection=PGui.QGroupBox("On Selection")
+		frameSelection.setLayout(self.vboxSelection)
+		self.button_processServer.hide()
+		
+		#Middle pannel 
+		self.vboxFrame=PGui.QVBoxLayout()
+		self.vboxFrame.addWidget(self.frameServer)
+		self.vboxFrame.addWidget(frameSelection,1)
+		self.middlePannel=PGui.QWidget()
+		self.middlePannel.setLayout(self.vboxFrame)
+		
+
 	def _layout(self):
-		frame_selection=PGui.QGroupBox("On selection")
-		vbox_selection=PGui.QVBoxLayout()
-		
-		vbox_selection.addWidget(self.button_processHere)
-		
-		vbox_selection.addWidget(self.button_cancel)
-		vbox_selection.addWidget(self.button_remove)
-		vbox_selection.addWidget(self.button_restart)
-		frame_selection.setLayout(vbox_selection)
-		
-		frame_server=PGui.QGroupBox("Server")
-		vbox_server=PGui.QVBoxLayout()
-		vbox_server.addWidget(self.label_ip)
-		vbox_server.addWidget(self.edit_ip)
-		vbox_server.addWidget(self.label_port)
-		vbox_server.addWidget(self.edit_port)
-		vbox_server.addWidget(self.button_connectServer)
-		frame_server.setLayout(vbox_server)
-		
 		hbox_everything=PGui.QHBoxLayout()
 		hbox_everything.addWidget(self.button_clear)
 		hbox_everything.addWidget(self.button_selectAll)
 		hbox_everything.addWidget(self.button_selectNone)
 
-		vbox1=PGui.QVBoxLayout()
-		vbox1.addWidget(self.tableView)
-		vbox1.addLayout(hbox_everything)
+		vbox=PGui.QVBoxLayout()
+		vbox.addWidget(self.tableView)
+		vbox.addLayout(hbox_everything)
 		
-		vbox2=PGui.QVBoxLayout()
-		vbox2.addWidget(frame_server)
-		vbox2.addWidget(frame_selection,2)
-	
 		hbox=PGui.QHBoxLayout()
-		hbox.addLayout(vbox1,2)
-		hbox.addLayout(vbox2)
+		hbox.addLayout(vbox,2)
+		hbox.addWidget(self.middlePannel)
 		hbox.addWidget(self.console,2)
 		self.setLayout(hbox)
+
+	def update_Layout(self,connected=True):
+		if connected:
+			self.frameServer.hide()
+			self.button_processServer.show()
+		else:
+			self.frameServer.show()
+			self.button_processServer.hide()
+
+#---------------------------------------------------------------------------------------------------------
+	#Server related
+#---------------------------------------------------------------------------------------------------------
+	#connect to server with ip and port specified
+	def connect_to_server(self):
+		self.ip=self.edit_ip.text()
+		self.port=int(self.edit_port.text())
+		self.sendsMessage.emit("Attempt to connect with ip: "+self.ip+" and port: "+str(self.port))
+		self.tcpSocket.abort()
+		self.tcpSocket.connectToHost(PNet.QHostAddress(self.ip),self.port)
 		
+	def on_state_change(self,fullState):
+		state=str(fullState).split('.')[-1][:-5]
+		self.sendsMessage.emit("Socket state: "+state)
+		
+		if state=='HostLookup':
+			self.button_connectServer.setEnabled(False)
+			
+		elif state=='Connecting':
+			self.button_connectServer.setEnabled(False)
+			
+		elif state=="Unconnected":
+			self.button_connectServer.setEnabled(True)
+			
+		elif state=='Connected':
+			self.on_connection()
+			
+	def on_connection(self):
+		if self.tcpSocket.isValid():
+			self.sendsMessage.emit("Connected to server (ip="+self.ip+", port="+str(self.port)+")")
+			self.update_Layout(connected=True)
+		else:
+			self.sendsMessage.emit("Socket is not valid")
+			
+	def on_disconnection(self):
+		self.update_Layout(connected=False)
+		self.sendsMessage.emit("Socket was disconnected")
+		
+	def display_error(self,socketError):
+		if socketError == PNet.QAbstractSocket.RemoteHostClosedError:
+			self.sendsMessage.emit("Host closed connection")
+		elif socketError == PNet.QAbstractSocket.HostNotFoundError:
+			self.sendsMessage.emit("The host was not found. Please check the host name and port settings.")
+		elif socketError == PNet.QAbstractSocket.ConnectionRefusedError:
+			self.sendsMessage.emit("The connection was refused by the peer or time out. Please check the host name and port settings")
+		else:
+			self.sendsMessage.emit("The following error occurred: %s." % self.tcpSocket.errorString())
+		self.tcpSocket.abort()
+		
+	def send_protocol(self,instruction,List=[]):
+		block=PCore.QByteArray()
+		out=PCore.QDataStream(block,PCore.QIODevice.WriteOnly)
+		out.setVersion(PCore.QDataStream.Qt_4_0)
+		out.writeUInt16(0)
+		out.writeString(instruction)
+		if instruction=="processList" and len(List)!=0:
+			out.writeQStringList(List)
+		elif instruction=="stopProcess":
+			pass
+		elif instruction=="myProcessState":
+			pass
+		else:
+			print "send_protocol : instruction not known"
+			return 0
+		out.device().seek(0)
+		out.writeUInt16(block.size()-2)
+		return block
+		
+	def display_output_from_remote(self):
+		pass
+		#instr=PCore.QDataStream(self.tcpSocket)
+		#instr.setVersion(PCore.QDataStream.Qt_4_0)
+		
+		#if self.blockSize == 0:
+			#if self.tcpSocket.bytesAvailable() < 2:
+				#print "client: bytes inf 2"
+				#return 0
+			#self.blockSize = instr.readUInt16()
+
+		#if self.tcpSocket.bytesAvailable() < self.blockSize:
+			#print "client :bytes inf block size"
+			#return 0
+		
+		#print "message received:", instr.readString()
+			
+	
+#---------------------------------------------------------------------------------------------------------
+	#List
+#---------------------------------------------------------------------------------------------------------
 		
 	#Return false if experiment already in list
-	def add_experiment(self,experiment):
-		return self.model.add_experiment(experiment)
+	def add_experiment(self,prmPath):
+		return self.model.add_experiment(prmPath)
+
+
 		
 	def clear_list(self):
 		nbRemove=self.model.clear()
@@ -227,9 +345,15 @@ class ProcessManager(PGui.QWidget):
 			self.process.kill()
 			self.sendsMessage.emit("Killed 1 experiment" %nbFound)
 
+
+#---------------------------------------------------------------------------------------------------------
+	#Process Here
+#---------------------------------------------------------------------------------------------------------
 	#run klusta on one experiment
 	def run_one(self):
 		if self.model.currentExperiment!=None:
+			self.isRunning=True
+			
 			name=self.model.currentExperiment.name
 			path_prmFile=self.model.currentExperiment.prmFile
 			name_prmFile=path_prmFile.split('/')[-1]
@@ -240,7 +364,7 @@ class ProcessManager(PGui.QWidget):
 			else:
 				arguments=[name_prmFile]+ARGUMENTS
 		
-			self.sendsMessage.emit("Working directory:%s" %path_folder)
+			self.sendsMessage.emit("Working directory: %s" %path_folder)
 			self.sendsMessage.emit("Do: %s %s" %(PROGRAM," ".join(arguments)))
 		
 			self.console.separator(name)
@@ -259,15 +383,34 @@ class ProcessManager(PGui.QWidget):
 		#or stop
 		else:
 			self.process.close()
+			self.isRunning=False
 
 
+#---------------------------------------------------------------------------------------------------------
+	#Display and save
+#---------------------------------------------------------------------------------------------------------
 	#print output of the console in the console view
 	def display_output(self):
 		lines=str(self.process.readAll())
 		self.console.display(lines)
+		
+	#save list (killl current process if needed)
+	def save(self,f):
+		if self.isRunning:
+			self.process.finished.disconnect(self.go_to_next)
+			self.process.kill()
+			self.process.waitForFinished(2) #to kill properly
+		self.model.save(f)
+
+
+	def read_save(self,f):
+		self.model.read_save(f)
 
 
 
+#---------------------------------------------------------------------------------------------------------
+#  If launch alone
+#---------------------------------------------------------------------------------------------------------
 if __name__=='__main__':
 	PGui.QApplication.setStyle("cleanlooks")
 	app=PGui.QApplication(sys.argv)

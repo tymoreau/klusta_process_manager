@@ -4,6 +4,7 @@ What's new:
 	- More buttons to manage processing (cancel, remove/kill, restart..)
 	- Log view on the top right
 	- "Add to list" button replace by a green arrow (on the left)
+	- Save your list automatically on exit (and try to load the list on launch)
 
 -----------------
 	Requirements

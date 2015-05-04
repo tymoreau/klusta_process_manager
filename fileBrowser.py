@@ -36,7 +36,6 @@ class FileBrowser(PGui.QGroupBox):
 		#self.button_add=PGui.QToolButton()
 		#self.button_add.setArrowType(PCore.Qt.DownArrow)
 		self.button_add=PGui.QPushButton(PGui.QIcon("images/downarrow.png")," ")
-		
 		self.button_add.setEnabled(False)
 		
 	def _model(self):
@@ -108,7 +107,7 @@ class FileBrowser(PGui.QGroupBox):
 					if dataName not in os.listdir(path):
 						dataName=baseName+'.dat'
 						if dataName not in os.listdir(path):
-							self.sendsMessage.emit("*** "+basename+": no raw data")
+							self.sendsMessage.emit("*** "+baseName+": no raw data")
 							continue #to the next item in selection
 
 					os.system('cp '+self.prbModel+" "+path+"/"+prbName)
@@ -137,6 +136,7 @@ class FileBrowser(PGui.QGroupBox):
 				self.button_prm.setEnabled(True)
 		else:
 			self.button_prm.setEnabled(False)
+			self.button_add.setEnabled(False)
 			
 
 if __name__=='__main__':

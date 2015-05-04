@@ -1,3 +1,4 @@
+#! /home/david/anaconda/bin/python
 import sys
 import os 
 import signal
@@ -12,7 +13,7 @@ from fileBrowser import FileBrowser
 from experimentModel import ExperimentModel, Experiment
 
 #Path to your data folder
-ROOT='./test'
+ROOT='/home/david/dataRat/'
 
 #Property of the window
 WIDTH=1200
@@ -61,6 +62,9 @@ class MainWindow(PGui.QWidget):
 		#Layout
 		self._layout()
 		
+		#read save
+		self.read_save()
+		
 	def _layout(self):
 
 		#Create Top splitter
@@ -93,7 +97,8 @@ class MainWindow(PGui.QWidget):
 		self.setWindowTitle(TITLE)
 
 
-	#Convert selection of tree view into Experiment object to add to experimentModel
+#-------------------------------------------------------------------------------------------------------------------
+	#for each item selected in the treeview, check if it's a folder name
 	def add_to_process_manager(self):
 		selection=sorted(self.fileBrowser.tree.selectedIndexes())
 		self.sendsMessage.emit("\n******** add to list ")
@@ -103,96 +108,54 @@ class MainWindow(PGui.QWidget):
 				type=self.fileBrowser.model.type(item)
 				if type=='Folder':
 					path_folder=self.fileBrowser.model.filePath(item)
-					name_prmFile=""
-					for filename in os.listdir(path_folder):
-						if filename.endswith('.prm'):
-							name_prmFile=filename
-							self.check_prm_file(path_folder,name_prmFile,name)
-							break
-					if name_prmFile=="":
-						self.sendsMessage.emit("*** "+str(name)+": do not have a prm file")
+					self.look_for_prm(path_folder,name)
 				else:
 					self.sendsMessage.emit("*** "+str(name)+": not a folder")
+					
+	#look for a prm file and try to add the experiment to processManager
+	def look_for_prm(self,path_folder,name):
+		for filename in os.listdir(path_folder):
+			if filename.endswith('.prm'):
+				if self.processManager.add_experiment(path_folder+'/'+filename):
+					self.sendsMessage.emit("*** "+str(name)+": added")
+				else:
+					self.sendsMessage.emit("*** "+str(name)+": already in list")
+				return
+		self.sendsMessage.emit("*** "+str(name)+": do not have a prm file")
+#-------------------------------------------------------------------------------------------------------------------
 
 
-	#Check if we should be able to process the prmfile
-	def check_prm_file(self,path_folder,name_prmFile,name):
-		path_prmFile=path_folder+"/"+name_prmFile
-		with open(path_prmFile,'r') as fPRM:
-			nbFound=0
-			for line in fPRM.readlines():
-				if line.startswith("experiment_name"):
-					experiment_name=line.split("=")[-1].strip()[1:-1]
-					nbFound+=1
-				elif line.startswith("raw_data_files"):
-					data_name=line.split("=")[-1].strip()[1:-1]
-					nbFound+=1
-				elif line.startswith("prb_file"):
-					prb_name=line.split("=")[-1].strip()[1:-1]
-					nbFound+=1
-				if nbFound>=3:
-					break
-			#check if we found everything
-			if nbFound<3:
-				self.sendsMessage.emit("*** "+str(name)+": prmFile is incorrect")
-				return False
-			#experiment name has to match folder name
-			if experiment_name!=name:
-				self.sendsMessage.emit("*** "+str(name)+": experiment name don't match folder name")
-				return False
-			#check if the raw data and prb file are in the folder
-			listFile=os.listdir(path_folder)
-			if (data_name not in listFile) or (prb_name not in listFile):
-				self.sendsMessage.emit("*** "+str(name)+": could not find raw data or PRB file in folder")
-				return False
-			
-			#if everything is ok
-			experiment=Experiment(name=experiment_name,prmFile=path_prmFile,rawData=data_name,prb=prb_name)
-			if not self.processManager.add_experiment(experiment):
-				self.sendsMessage.emit("*** "+str(name)+": already in list")
-				del experiment
-				return False
-			else:
-				self.sendsMessage.emit("*** "+str(name)+": added to list")
-				return True
 			
 
-						
+	def closeEvent(self,event):
+		#check if is running
+		if self.processManager.isRunning:
+			msgBox = PGui.QMessageBox()
+			msgBox.setText("Closing the app")
+			msgBox.setInformativeText("A process is running, are you sure you want to quit ? The process will be killed")
+			msgBox.setStandardButtons(PGui.QMessageBox.Yes | PGui.QMessageBox.Cancel)
+			msgBox.setDefaultButton(PGui.QMessageBox.Cancel)
+			answer = msgBox.exec_()
+			if answer==PGui.QMessageBox.Cancel:
+				event.ignore()
+				return
+		self.save()
+		event.accept()
 				
-		#string_toAdd=[]
-		#selection=sorted(self.fileBrowser.tree.selectedIndexes())
-		#for item in selection:
-			#if item.column()==0:
-				#name=item.data()
-				##size=item.sibling(item.row(),1).data()
-				##type=item.sibling(item.row(),2).data()
-				#type=self.fileBrowser.model.type(item)
-				#if type=='Folder':
-					#path=self.fileBrowser.model.filePath(item)
-					#for filename in os.listdir(path):
-						#if filename.endswith('.prm'):
-							#string_toAdd.append(path+'/'+filename)
-							#break
-				#elif name.endswith(".prm"):
-					#path=self.fileBrowser.model.filePath(item)
-					#string_toAdd.append(path)
+	def save(self):
+		with open("save.txt","w") as f:
+			self.processManager.save(f)
 			
-		#if string_toAdd:
-			#currentString=self.listToProcess.model.stringList()
-			#newString=list(set(currentString).union(set(string_toAdd)))
-			#newFiles=len(newString)-len(currentString)
-			#if newFiles!=0:
-				#newString=sorted(newString, key=lambda s: s.lower())
-				#self.listToProcess.model.setStringList(newString)
-				#self.listToProcess.button_save_txt.setEnabled(True)
-				#self.listToProcess.button_clear.setEnabled(True)
-				#self.listToProcess.becomesFill.emit()
-				#self.sendsMessage.emit("Added "+str(newFiles)+" file(s)")
-			#else:
-				#self.sendsMessage.emit("Nothing new to add")
-		#else:
-			#self.sendsMessage.emit("No PRM files to add")
-				
+	
+	def read_save(self):
+		try :
+			f=open("save.txt","r")
+			self.processManager.read_save(f)
+			f.close()
+		except IOError:
+			pass
+			
+		
 
 
 if __name__ == '__main__':
