@@ -10,6 +10,7 @@ import signal
 #Model
 from experimentModel import ExperimentModel
 
+
 SEPARATOR='---'*15
 
 #Command to perform on list
@@ -22,6 +23,9 @@ IP="10.51.101.29"
 PORT=8000
 
 
+#---------------------------------------------------------------------------------------------------------
+# console output
+#---------------------------------------------------------------------------------------------------------
 class ConsoleView(PGui.QWidget):
 	
 	def __init__(self):
@@ -44,15 +48,21 @@ class ConsoleView(PGui.QWidget):
 	def display(self,lines):
 		self.output.append(lines)
 		
-	def separator(self,name):
+	def separator(self,experiment):
 		sep='<b>'+SEPARATOR+SEPARATOR+'</b> \n'
-		sep1='<b> Experiment: '+str(name)+'</b> \n'
-		sep2='<b>'+SEPARATOR+SEPARATOR+'</b>'
+		sep1='<b> Experiment: '+str(experiment.name)+'</b> \n'
+		sep2='Working directory: '+str(experiment.folderPath)+' \n'
+		sep3='Do: %s %s \n'%(PROGRAM," ".join(experiment.arguments))
+		sep4='<b>'+SEPARATOR+SEPARATOR+'</b>'
 		self.output.append(sep)
 		self.output.append(sep1)
 		self.output.append(sep2)
+		self.output.append(sep3)
+		self.output.append(sep4)
 
-
+#---------------------------------------------------------------------------------------------------------
+# Process Manager
+#---------------------------------------------------------------------------------------------------------
 class ProcessManager(PGui.QWidget):
 	sendsMessage=PCore.Signal(object)
 
@@ -76,7 +86,12 @@ class ProcessManager(PGui.QWidget):
 		self.tcpSocket.error.connect(self.display_error)
 		self.tcpSocket.stateChanged.connect(self.on_state_change)
 		self.tcpSocket.disconnected.connect(self.on_disconnection)
-		self.tcpSocket.readyRead.connect(self.display_output_from_remote)
+		self.tcpSocket.readyRead.connect(self.read)
+		#Reading data
+		self.blockSize=0
+		self.dataStream=PCore.QDataStream(self.tcpSocket)
+		self.dataStream.setVersion(PCore.QDataStream.Qt_4_0)
+		
 		
 		#process Here
 		self.process=PCore.QProcess()
@@ -116,8 +131,9 @@ class ProcessManager(PGui.QWidget):
 		self.button_connectServer=PGui.QPushButton("\nConnect to server\n")
 		self.button_connectServer.clicked.connect(self.connect_to_server)
 	
-		self.button_processServer=PGui.QPushButton("\nProcess on server\n")
-		#to do : click connect
+		self.button_processServer=PGui.QPushButton("\nProcess on server\n (klusta) \n")
+		self.button_processServer.clicked.connect(self.process_server)
+		self.button_restartServer=PGui.QPushButton("Restart on server\n (klusta --overwrite)")
 
 		#on a selection
 		self.button_cancel=PGui.QPushButton("Cancel")
@@ -176,9 +192,11 @@ class ProcessManager(PGui.QWidget):
 		self.vboxSelection.addWidget(self.button_cancel)
 		self.vboxSelection.addWidget(self.button_remove)
 		self.vboxSelection.addWidget(self.button_restart)
+		self.vboxSelection.addWidget(self.button_restartServer)
 		frameSelection=PGui.QGroupBox("On Selection")
 		frameSelection.setLayout(self.vboxSelection)
 		self.button_processServer.hide()
+		self.button_restartServer.hide()
 		
 		#Middle pannel 
 		self.vboxFrame=PGui.QVBoxLayout()
@@ -208,9 +226,11 @@ class ProcessManager(PGui.QWidget):
 		if connected:
 			self.frameServer.hide()
 			self.button_processServer.show()
+			#self.button_restartServer.show()
 		else:
 			self.frameServer.show()
 			self.button_processServer.hide()
+			self.button_restartServer.hide()
 
 #---------------------------------------------------------------------------------------------------------
 	#Server related
@@ -226,16 +246,12 @@ class ProcessManager(PGui.QWidget):
 	def on_state_change(self,fullState):
 		state=str(fullState).split('.')[-1][:-5]
 		self.sendsMessage.emit("Socket state: "+state)
-		
 		if state=='HostLookup':
 			self.button_connectServer.setEnabled(False)
-			
 		elif state=='Connecting':
 			self.button_connectServer.setEnabled(False)
-			
 		elif state=="Unconnected":
 			self.button_connectServer.setEnabled(True)
-			
 		elif state=='Connected':
 			self.on_connection()
 			
@@ -279,23 +295,63 @@ class ProcessManager(PGui.QWidget):
 		out.device().seek(0)
 		out.writeUInt16(block.size()-2)
 		return block
+	
+	def process_server(self):
+		prmNameList=[]
+		self.model.selectionUpdate_process_server()
+		for experiment in self.model.experimentList:
+			if experiment.onServer:
+				prmNameList.append(str(experiment.prm))
+		block=self.send_protocol("processList",List=prmNameList)
+		if block!=0:
+			self.tcpSocket.write(block)
+		print "list=",prmNameList
+		print "write done"
 		
-	def display_output_from_remote(self):
-		pass
-		#instr=PCore.QDataStream(self.tcpSocket)
-		#instr.setVersion(PCore.QDataStream.Qt_4_0)
-		
-		#if self.blockSize == 0:
-			#if self.tcpSocket.bytesAvailable() < 2:
-				#print "client: bytes inf 2"
-				#return 0
-			#self.blockSize = instr.readUInt16()
+	#def restart_server(self):
+		#prmNameList=[]
+		#self.model.selectionUpdate_restart_server()
+		#for experiment in self.model.experimentList:
+			#if experiment.onServer:
+				#prmNameList.append(str(experiment.prm))
+		#block=self.send_protocol("processList",List=prmNameList)
+		#self.tcpSocket.write(block)
+		#print "list=",prmNameList
+		#print "write done"
 
-		#if self.tcpSocket.bytesAvailable() < self.blockSize:
-			#print "client :bytes inf block size"
-			#return 0
-		
-		#print "message received:", instr.readString()
+
+	def read(self):
+		while self.tcpSocket.bytesAvailable():
+			print "read"
+			#read size of block
+			if self.tcpSocket.bytesAvailable() < 2:
+				print "client: bytes inf 2"
+				return 0
+			self.blockSize = self.dataStream.readUInt16()
+
+			#check if all data is available
+			if self.tcpSocket.bytesAvailable() < self.blockSize:
+				print "client :bytes inf block size"
+				return 0
+			
+			#read instruction
+			instruction=self.dataStream.readQString()
+			if instruction=="updateState":
+				self.model.beginResetModel()
+				stateList=self.dataStream.readQStringList()
+				print "receive state list",stateList
+				i=0
+				while (i+1)<len(stateList):
+					prmName=stateList[i]
+					state=stateList[i+1]
+					for experiment in self.model.experimentList:
+						if experiment.prm==prmName:
+							experiment.state=state
+					i+=2
+				self.model.endResetModel()
+					
+			else:
+				print "received unknown instruction:",instruction
 			
 	
 #---------------------------------------------------------------------------------------------------------
@@ -304,24 +360,12 @@ class ProcessManager(PGui.QWidget):
 		
 	#Return false if experiment already in list
 	def add_experiment(self,prmPath):
-		return self.model.add_experiment(prmPath)
+		return self.model.add_experiment(prmPath=prmPath)
 
-
-		
 	def clear_list(self):
 		nbRemove=self.model.clear()
 		self.sendsMessage.emit("Clear: removed %i experiment(s)" %nbRemove)
 		
-	#user click on Process Here: 
-	# -update status of experiments "ready to be process" -> "waiting to be process"
-	# -if klusta not already running, starts klusta
-	def process_here(self):
-		nbFound=self.model.selectionUpdate_process_here()
-		self.sendsMessage.emit("Process Here: found %i experiment(s) to process" %nbFound)
-		if not self.isRunning:
-			if self.model.get_first_to_process():
-				self.run_one()
-				
 	#user click cancel: 
 	#"waiting to be process" -> None
 	def cancel(self):
@@ -343,39 +387,36 @@ class ProcessManager(PGui.QWidget):
 		self.sendsMessage.emit("Removed %i experiment(s)" %nbFound)
 		if killCurrent:
 			self.process.kill()
-			self.sendsMessage.emit("Killed 1 experiment" %nbFound)
+			self.sendsMessage.emit("Killed 1 experiment")
+			
+			
 
 
 #---------------------------------------------------------------------------------------------------------
 	#Process Here
 #---------------------------------------------------------------------------------------------------------
+	#user click on Process Here: 
+	# -update status of experiments "ready to be process" -> "waiting to be process"
+	# -if klusta not already running, starts klusta
+	def process_here(self):
+		nbFound=self.model.selectionUpdate_process_here()
+		self.sendsMessage.emit("Process Here: found %i experiment(s) to process" %nbFound)
+		if not self.isRunning and nbFound>0:
+			if self.model.get_first_to_process():
+				self.run_one()
+
 	#run klusta on one experiment
 	def run_one(self):
 		if self.model.currentExperiment!=None:
 			self.isRunning=True
-			
-			name=self.model.currentExperiment.name
-			path_prmFile=self.model.currentExperiment.prmFile
-			name_prmFile=path_prmFile.split('/')[-1]
-			path_folder=self.model.currentExperiment.folder
-			
-			if self.model.currentExperiment.restart:
-				arguments=[name_prmFile]+ARGUMENTS_RESTART
-			else:
-				arguments=[name_prmFile]+ARGUMENTS
-		
-			self.sendsMessage.emit("Working directory: %s" %path_folder)
-			self.sendsMessage.emit("Do: %s %s" %(PROGRAM," ".join(arguments)))
-		
-			self.console.separator(name)
-			self.process.setWorkingDirectory(path_folder)
-			self.process.start(PROGRAM,arguments)
+			self.console.separator(self.model.currentExperiment)
+			self.model.currentExperiment.run_klusta(self.process)
 		
 	#when the current process finish, this function is activate
 	#process an other experiment or stop
 	def go_to_next(self,exitcode):
 		#update experiment
-		self.model.currentExperiment_done(exitcode)
+		self.model.currentExperiment_isDone(exitcode)
 		
 		#find another experiment to process
 		if self.model.get_first_to_process():
@@ -398,10 +439,10 @@ class ProcessManager(PGui.QWidget):
 	def save(self,f):
 		if self.isRunning:
 			self.process.finished.disconnect(self.go_to_next)
+			self.model.currentExperiment.crashed=True
 			self.process.kill()
 			self.process.waitForFinished(2) #to kill properly
 		self.model.save(f)
-
 
 	def read_save(self,f):
 		self.model.read_save(f)
@@ -419,15 +460,16 @@ if __name__=='__main__':
 	signal.signal(signal.SIGINT, signal.SIG_DFL)
 	
 	
-	#Test Experiments
-	exp1=Experiment("Rat034_small",prmFile="/home/david/dataRat/Rat034_small/Rat034_small.prm")
-	exp2=Experiment("Rat034_small_number2",prmFile="/home/david/dataRat/Rat034_small_number2/Rat034_small_number2.prm")
-	
+
 	
 	win=ProcessManager()
 	
-	win.model.add_experiment(exp1)
-	win.model.add_experiment(exp2)
+	#Test Experiments
+	win.model.add_experiment(prmPath="/home/david/dataRat/Rat034_small/Rat034_small.prm")
+	win.model.add_experiment(prmPath="/home/david/dataRat/Rat034_small_number2/Rat034_small_number2.prm")
+	win.model.add_experiment(prmPath="/home/david/Documents/app_0.2.0/test/animal02_date1/animal02_date1.prm")
+	win.model.add_experiment(prmPath="/home/david/Documents/app_0.2.0/test/animal01_date2/animal01_date2.prm")
+
 	
 	win.setMinimumSize(1000,600)
 

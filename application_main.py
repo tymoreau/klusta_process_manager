@@ -13,7 +13,7 @@ from fileBrowser import FileBrowser
 from experimentModel import ExperimentModel, Experiment
 
 #Path to your data folder
-ROOT='/home/david/dataRat/'
+ROOT='./test'
 
 #Property of the window
 WIDTH=1200
@@ -116,16 +116,13 @@ class MainWindow(PGui.QWidget):
 	def look_for_prm(self,path_folder,name):
 		for filename in os.listdir(path_folder):
 			if filename.endswith('.prm'):
-				if self.processManager.add_experiment(path_folder+'/'+filename):
-					self.sendsMessage.emit("*** "+str(name)+": added")
-				else:
-					self.sendsMessage.emit("*** "+str(name)+": already in list")
+				state=self.processManager.add_experiment(path_folder+'/'+filename)
+				if state=="--":
+					state="added"
+				self.sendsMessage.emit("*** "+str(name)+": "+state)
 				return
 		self.sendsMessage.emit("*** "+str(name)+": do not have a prm file")
 #-------------------------------------------------------------------------------------------------------------------
-
-
-			
 
 	def closeEvent(self,event):
 		#check if is running
@@ -145,7 +142,6 @@ class MainWindow(PGui.QWidget):
 	def save(self):
 		with open("save.txt","w") as f:
 			self.processManager.save(f)
-			
 	
 	def read_save(self):
 		try :
