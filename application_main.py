@@ -62,9 +62,6 @@ class MainWindow(PGui.QWidget):
 		#Layout
 		self._layout()
 		
-		#read save
-		self.read_save()
-		
 	def _layout(self):
 
 		#Create Top splitter
@@ -116,7 +113,7 @@ class MainWindow(PGui.QWidget):
 	def look_for_prm(self,path_folder,name):
 		for filename in os.listdir(path_folder):
 			if filename.endswith('.prm'):
-				state=self.processManager.add_experiment(path_folder+'/'+filename)
+				state=self.processManager.add_experiment(path_folder)
 				if state=="--":
 					state="added"
 				self.sendsMessage.emit("*** "+str(name)+": "+state)
@@ -136,22 +133,8 @@ class MainWindow(PGui.QWidget):
 			if answer==PGui.QMessageBox.Cancel:
 				event.ignore()
 				return
-		self.save()
+		self.processManager.process.kill()
 		event.accept()
-				
-	def save(self):
-		with open("save.txt","w") as f:
-			self.processManager.save(f)
-	
-	def read_save(self):
-		try :
-			f=open("save.txt","r")
-			self.processManager.read_save(f)
-			f.close()
-		except IOError:
-			pass
-			
-		
 
 
 if __name__ == '__main__':

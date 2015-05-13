@@ -15,8 +15,7 @@ SEPARATOR='---'*15
 
 #Command to perform on list
 PROGRAM="klusta"
-ARGUMENTS=["--cluster-only","--overwrite"]
-ARGUMENTS_RESTART=["--cluster-only","--overwrite"]
+
 
 #Connection to remote computer
 IP="10.51.101.29"
@@ -51,7 +50,7 @@ class ConsoleView(PGui.QWidget):
 	def separator(self,experiment):
 		sep='<b>'+SEPARATOR+SEPARATOR+'</b> \n'
 		sep1='<b> Experiment: '+str(experiment.name)+'</b> \n'
-		sep2='Working directory: '+str(experiment.folderPath)+' \n'
+		sep2='Working directory: '+str(experiment.folder.absolutePath())+' \n'
 		sep3='Do: %s %s \n'%(PROGRAM," ".join(experiment.arguments))
 		sep4='<b>'+SEPARATOR+SEPARATOR+'</b>'
 		self.output.append(sep)
@@ -297,16 +296,15 @@ class ProcessManager(PGui.QWidget):
 		return block
 	
 	def process_server(self):
-		prmNameList=[]
+		nameList=[]
 		self.model.selectionUpdate_process_server()
 		for experiment in self.model.experimentList:
 			if experiment.onServer:
-				prmNameList.append(str(experiment.prm))
-		block=self.send_protocol("processList",List=prmNameList)
+				nameList.append(experiment.folder.dirName())
+		block=self.send_protocol("processList",List=nameList)
 		if block!=0:
 			self.tcpSocket.write(block)
-		print "list=",prmNameList
-		print "write done"
+			print "process server, send list=",nameList
 		
 	#def restart_server(self):
 		#prmNameList=[]
@@ -342,10 +340,10 @@ class ProcessManager(PGui.QWidget):
 				print "receive state list",stateList
 				i=0
 				while (i+1)<len(stateList):
-					prmName=stateList[i]
+					name=stateList[i]
 					state=stateList[i+1]
 					for experiment in self.model.experimentList:
-						if experiment.prm==prmName:
+						if experiment.folder.dirName()==name:
 							experiment.state=state
 					i+=2
 				self.model.endResetModel()
@@ -359,8 +357,8 @@ class ProcessManager(PGui.QWidget):
 #---------------------------------------------------------------------------------------------------------
 		
 	#Return false if experiment already in list
-	def add_experiment(self,prmPath):
-		return self.model.add_experiment(prmPath=prmPath)
+	def add_experiment(self,folderPath):
+		return self.model.add_experiment(folderPath)
 
 	def clear_list(self):
 		nbRemove=self.model.clear()
@@ -428,25 +426,12 @@ class ProcessManager(PGui.QWidget):
 
 
 #---------------------------------------------------------------------------------------------------------
-	#Display and save
+	#Display
 #---------------------------------------------------------------------------------------------------------
 	#print output of the console in the console view
 	def display_output(self):
 		lines=str(self.process.readAll())
 		self.console.display(lines)
-		
-	#save list (killl current process if needed)
-	def save(self,f):
-		if self.isRunning:
-			self.process.finished.disconnect(self.go_to_next)
-			self.model.currentExperiment.crashed=True
-			self.process.kill()
-			self.process.waitForFinished(2) #to kill properly
-		self.model.save(f)
-
-	def read_save(self,f):
-		self.model.read_save(f)
-
 
 
 #---------------------------------------------------------------------------------------------------------
@@ -458,17 +443,15 @@ if __name__=='__main__':
 	
 	#to be able to close wth ctrl+c
 	signal.signal(signal.SIGINT, signal.SIG_DFL)
-	
-	
 
 	
 	win=ProcessManager()
 	
 	#Test Experiments
-	win.model.add_experiment(prmPath="/home/david/dataRat/Rat034_small/Rat034_small.prm")
-	win.model.add_experiment(prmPath="/home/david/dataRat/Rat034_small_number2/Rat034_small_number2.prm")
-	win.model.add_experiment(prmPath="/home/david/Documents/app_0.2.0/test/animal02_date1/animal02_date1.prm")
-	win.model.add_experiment(prmPath="/home/david/Documents/app_0.2.0/test/animal01_date2/animal01_date2.prm")
+	print win.model.add_experiment("/home/david/dataRat/Rat034_small")
+	print win.model.add_experiment("/home/david/dataRat/Rat034_small_number2")
+	print win.model.add_experiment("/home/david/Documents/app_0.3.0/test/animal02_date1/")
+	print win.model.add_experiment("/home/david/Documents/app_0.3.0/test/animal01_date2")
 
 	
 	win.setMinimumSize(1000,600)

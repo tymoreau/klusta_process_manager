@@ -20,10 +20,10 @@ SEPARATOR='---'*15
 
 NAS_PATH="/home/david/fakeNAS"
 SERVER_PATH="/home/david/dataServer"
-
+PROGRAM="klusta"
 
 #-------------------------------------------------------------------------------------------------------------------
-#  CLIENT: tcpSocket to communicate with the tcpSocket of ProcessManager.py  ---- other data on client
+#  CLIENT: tcpSocket to communicate with the tcpSocket of ProcessManager.py  ---- + other data on client
 #-------------------------------------------------------------------------------------------------------------------
 class Client(PCore.QObject):
 	hasNewExperiment=PCore.Signal()
@@ -43,7 +43,6 @@ class Client(PCore.QObject):
 		
 		#Client infos
 		self.ip=self.tcpSocket.localAddress().toString()
-		self.state="None"
 		self.connected=True
 		
 		#model
@@ -57,7 +56,7 @@ class Client(PCore.QObject):
 		
 		#frame
 		self.frame=PGui.QGroupBox()
-		self.frame.setTitle("Client ip: %s" %self.ip)
+		self.frame.setTitle("Client ip: %s connected:Yes" %self.ip)
 		box=PGui.QVBoxLayout()
 		box.addWidget(self.tableView)
 		self.frame.setLayout(box)
@@ -65,10 +64,20 @@ class Client(PCore.QObject):
 	#client reconnected to server
 	def update_socket(self,socket):
 		self.tcpSocket=socket
+		self.tcpSocket.disconnected.connect(self.on_disconnect)
+		self.tcpSocket.readyRead.connect(self.read)
+		
+		#Reading data
+		self.blockSize=0
+		self.dataStream=PCore.QDataStream(self.tcpSocket)
+		self.dataStream.setVersion(PCore.QDataStream.Qt_4_0)
+		
+		self.frame.setTitle("Client ip: %s connected:Yes" %self.ip)
 		self.connected=True
 		
 	#client disconnected
 	def on_disconnect(self):
+		self.frame.setTitle("Client ip: %s connected:No" %self.ip)
 		try:
 			self.tcpSocket.deleteLater()
 		except RuntimeError:
@@ -82,29 +91,29 @@ class Client(PCore.QObject):
 		while self.tcpSocket.bytesAvailable():
 			#read size of block
 			if self.tcpSocket.bytesAvailable() < 2:
-				print "client %s: bytes inf 2"%self.ip
+				print("client %s: bytes inf 2"%self.ip)
 				return False
 			self.blockSize = self.dataStream.readUInt16()
 			#check if all data is available
 			if self.tcpSocket.bytesAvailable() < self.blockSize:
-				print "client %s: bytes inf block size"%self.ip
+				print("client %s: bytes inf block size"%self.ip)
 				return False
 			#read instruction
 			instruction=self.dataStream.readQString()
 			if instruction=="processList":
-				print "client %s sends processList" %self.ip
+				print("client %s sends processList" %self.ip)
 				self.instruction_process_list()
 			else:
-				print "client %s sends unknown instruction:"%(self.ip,instruction)
+				print("client %s sends unknown instruction:%s"%(self.ip,instruction))
 
-	#Received a list of prmPath
+	#Received a list of folder name
 	def instruction_process_list(self):
 		#read list
-		prmFileList=self.dataStream.readQStringList()
+		nameList=self.dataStream.readQStringList()
 		#add experiment if they are ok
-		for prmNameLocal in prmFileList:
-			state=self.model.add_experiment(prmNameLocal,SERVER_PATH,NAS_PATH)
-			self.stateList+=[prmNameLocal,state]
+		for nameLocal in nameList:
+			state=self.model.add_experiment(nameLocal,SERVER_PATH,NAS_PATH)
+			self.stateList+=[nameLocal,state]
 
 		#send change to client, signal server
 		self.send_update_state()
@@ -115,8 +124,8 @@ class Client(PCore.QObject):
 	#-------------------------------------------------------------------------------------
 	def update_state_list(self):
 		for experiment in self.model.experimentList:
-			self.stateList+=[experiment.prmNameLocal,experiment.state]
-			self.send_update_state()
+			self.stateList+=[experiment.nameLocal,experiment.state]
+		self.send_update_state()
 
 	def send_update_state(self):
 		block=self.send_protocol("updateState",List=self.stateList)
@@ -124,6 +133,7 @@ class Client(PCore.QObject):
 			self.tcpSocket.write(block)
 			print "Send to client: ",self.stateList
 			self.stateList=[]
+			#self.tcpSocket.flush()
 
 	def send_protocol(self,instruction,List=[]):
 		block=PCore.QByteArray()
@@ -207,7 +217,7 @@ class ConsoleView(PGui.QGroupBox):
 	def separator(self,experiment):
 		sep='<b>'+SEPARATOR+SEPARATOR+'</b> \n'
 		sep1='<b> Experiment: '+str(experiment.name)+'</b> \n'
-		sep2='Working directory: '+str(experiment.folderPath)+' \n'
+		sep2='Working directory: '+str(experiment.folder.absolutePath())+' \n'
 		sep3='Do: %s %s \n'%(PROGRAM," ".join(experiment.arguments))
 		sep4='<b>'+SEPARATOR+SEPARATOR+'</b>'
 		self.output.append(sep)
@@ -219,15 +229,27 @@ class ConsoleView(PGui.QGroupBox):
 #-----------------------------------------------------------------------------
 # Thread to transfer from NAS to Server
 #------------------------------------------------------------------------------
-class ThreadTransfer(PCore.QThread):
+class Worker(PCore.QObject):
+	finished=PCore.Signal()
+	workRequested=PCore.Signal()
+	
 	def __init__(self):
-		super(ThreadTransfer,self).__init__()
+		super(Worker,self).__init__()
+		self.isWorking=False
 		
-	def runExp(self,experiment):
-		#copy experiment from Nas to server
-		print "thread run"
-		experiment.copy_fromNAS_toServer()
-		return
+	def requestTransfer(self,client,NasToServer):
+		self.client=client
+		self.NasToServer=NasToServer
+		self.workRequested.emit()
+	
+	def doWork(self):
+		if not self.isWorking:
+			self.isWorking=True
+			self.client.model.beginResetModel()
+			self.client.model.currentExperimentTransfer.transfer()
+			self.isWorking=False
+			self.finished.emit()
+			self.client.model.endResetModel()
 
 
 #-------------------------------------------------------------------------------------------------------------------
@@ -253,11 +275,13 @@ class ProcessView(PGui.QWidget):
 		self.currentClient=None
 		
 		#Transfer
-		self.threadTransfer=ThreadTransfer()
-		self.threadTransfer.finished.connect(self.go_to_next_transfer)
-		self.threadTransfer.finished.connect(self.try_launch_process)
-		self.isTransfering=False
-		self.currentClientTransfer=None
+		self.thread=PCore.QThread()
+		self.worker=Worker()
+		self.worker.moveToThread(self.thread)
+		self.worker.workRequested.connect(self.thread.start)
+		self.thread.started.connect(self.worker.doWork)
+		self.worker.finished.connect(self.thread.quit)
+		self.worker.finished.connect(self.find_file_to_transfer)
 		
 		#dealing with the klusta environment
 		env = PCore.QProcess.systemEnvironment()
@@ -271,6 +295,9 @@ class ProcessView(PGui.QWidget):
 		#Client tables
 		self.vboxClient=PGui.QVBoxLayout()
 		self.setLayout(self.vboxClient)
+		
+		#console
+		self.console=ConsoleView()
 
 
 	def new_connection(self):
@@ -289,23 +316,27 @@ class ProcessView(PGui.QWidget):
 				self.clientDict[ip]=Client(newTcpSocket)
 				print "New Client:",ip
 				self.vboxClient.addWidget(self.clientDict[ip].frame)
-				self.clientDict[ip].hasNewExperiment.connect(self.try_launch_transfer)
 				self.clientDict[ip].hasNewExperiment.connect(self.try_launch_process)
+				self.clientDict[ip].hasNewExperiment.connect(self.find_file_to_transfer)
 				
+
+	#--------------------------------------------------------------------------------------------
+	#Process
 
 	def try_launch_process(self):
 		if not self.isRunning:
 			if self.find_file_to_process():
+				print "find a file to process"
 				self.isRunning=True
-				#self.console.separator(self.clientDict[self.currentClient].model.currentExperiment)
+				self.console.separator(self.clientDict[self.currentClient].model.currentExperiment)
 				self.clientDict[self.currentClient].model.currentExperiment.run_klusta(self.process)
-				self.clientDict[self.currentClient].update_state_list()
 
 	def find_file_to_process(self):
 		for ip,client in self.clientDict.items():
 			if client.model.get_first_to_process():
 				self.currentClient=ip
 				self.clientDict[self.currentClient].update_state_list()
+				print "find file to process just send list"
 				return True
 		self.currentClient=None
 		return False
@@ -313,6 +344,7 @@ class ProcessView(PGui.QWidget):
 	def go_to_next(self,exitcode):
 		self.clientDict[self.currentClient].model.currentExperiment_isDone(exitcode)
 		self.clientDict[self.currentClient].update_state_list()
+		print "go to next just send list"
 		if self.find_file_to_process():
 			self.console.separator(self.clientDict[self.currentClient].model.currentExperiment)
 			self.clientDict[self.currentClient].model.currentExperiment.run_klusta(self.process)
@@ -321,33 +353,30 @@ class ProcessView(PGui.QWidget):
 			self.process.close()
 		
 
-
-	def try_launch_transfer(self):
-		if not self.isTransfering:
-			print "try transfer"
-			if self.find_file_to_transfer():
-				print "found file"
-				self.isTransfering=True
-				self.threadTransfer.start()
-				self.threadTransfer.runExp(self.clientDict[self.currentClientTransfer].model.currentExperimentTransfer)
-				self.clientDict[self.currentClientTransfer].update_state_list()
-
+	#--------------------------------------------------------------------------------------------
+	#Transfer a file if possible 
 	def find_file_to_transfer(self):
+		#if there is not already a transfer running
+		if not self.thread.isRunning():
+			for ip,client in self.clientDict.items():
+				#test if the client have a file to transfer
+				if client.model.get_first_to_transfer():
+					client.update_state_list()
+					#do the transfer in another thread
+					self.worker.requestTransfer(client,NasToServer=True)
+					client.update_state_list()
+
+	#close everything properly
+	def close(self):
+		self.process.kill()
+		self.thread.exit(1)
 		for ip,client in self.clientDict.items():
-			if client.model.get_first_to_transfer():
-				self.currentClientTransfer=ip
-				self.clientDict[self.currentClientTransfer].update_state_list()
-				return True
-		self.currentClientTransfer=None
-		return False
-	
-	def go_to_next_transfer(self):
-		print "next transfer"
-		self.clientDict[self.currentClientTransfer].model.transfer_done(self)
-		self.clientDict[self.currentClientTransfer].update_state_list()
-		if not self.find_file_to_transfer():
-			self.isTransfering=False
-		
+			client.model.server_close()
+			client.update_state_list()
+			client.tcpSocket.flush()
+			client.tcpSocket.disconnectFromHost()
+			
+		self.server.close()
 
 
 
@@ -361,13 +390,10 @@ class MainWindow(PGui.QWidget):
 		#Views
 		self.serverView=ServerView()
 		self.processView=ProcessView()
-		self.console=ConsoleView()
-		
 		
 		#connect view
 		self.serverView.button_listen.toggled.connect(self.listen)
 		self.processView.process.readyRead.connect(self.display_output)
-		
 		
 		#Layout
 		self._layout()
@@ -379,7 +405,7 @@ class MainWindow(PGui.QWidget):
 		group=PGui.QWidget()
 		vbox=PGui.QVBoxLayout()
 		vbox.addWidget(self.serverView)
-		vbox.addWidget(self.console)
+		vbox.addWidget(self.processView.console)
 		group.setLayout(vbox)
 		
 		group.setMinimumSize(WIDTH/2 -20,HEIGHT-20)
@@ -400,7 +426,7 @@ class MainWindow(PGui.QWidget):
 		
 	def display_output(self):
 		lines=str(self.processView.process.readAll())
-		self.console.display(lines)
+		self.processView.console.display(lines)
 
 	def listen(self,checked):
 		if checked:
@@ -414,6 +440,21 @@ class MainWindow(PGui.QWidget):
 		else:
 			self.processView.server.close()
 			print "Server close: not accepting new clients"
+			
+	def closeEvent(self,event):
+		#check if is running
+		if self.processView.isRunning or self.processView.thread.isRunning():
+			msgBox = PGui.QMessageBox()
+			msgBox.setText("Closing the app")
+			msgBox.setInformativeText("A process or transfer is running, are you sure you want to quit ? The process or transfer will be killed")
+			msgBox.setStandardButtons(PGui.QMessageBox.Yes | PGui.QMessageBox.Cancel)
+			msgBox.setDefaultButton(PGui.QMessageBox.Cancel)
+			answer = msgBox.exec_()
+			if answer==PGui.QMessageBox.Cancel:
+				event.ignore()
+				return
+		self.processView.close()
+		event.accept()
 			
 
 if __name__=='__main__':
