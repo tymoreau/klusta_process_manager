@@ -16,6 +16,7 @@ SEPARATOR='---'*15
 #Command to perform on list
 PROGRAM="klusta"
 
+NAS_PATH="/home/david/fakeNAS"
 
 #Connection to remote computer
 IP="10.51.101.29"
@@ -59,6 +60,33 @@ class ConsoleView(PGui.QWidget):
 		self.output.append(sep3)
 		self.output.append(sep4)
 
+#-----------------------------------------------------------------------------
+# Thread to transfer NAS -- Local
+#------------------------------------------------------------------------------
+class Worker(PCore.QObject):
+	finished=PCore.Signal()
+	workRequested=PCore.Signal()
+	
+	def __init__(self):
+		super(Worker,self).__init__()
+		self.isWorking=False
+		
+	def requestTransfer(self,exp,folderNASPath):
+		if not self.isWorking:
+			self.exp=exp
+			self.folderNASPath=folderNASPath
+			self.workRequested.emit()
+	
+	def doWork(self):
+		if not self.isWorking:
+			self.isWorking=True
+			self.exp.copy_fromNAS_toLocal(self.folderNASPath)
+			self.isWorking=False
+			self.finished.emit()
+
+
+
+
 #---------------------------------------------------------------------------------------------------------
 # Process Manager
 #---------------------------------------------------------------------------------------------------------
@@ -91,6 +119,14 @@ class ProcessManager(PGui.QWidget):
 		self.dataStream=PCore.QDataStream(self.tcpSocket)
 		self.dataStream.setVersion(PCore.QDataStream.Qt_4_0)
 		
+		#Transfer
+		self.thread=PCore.QThread()
+		self.worker=Worker()
+		self.worker.moveToThread(self.thread)
+		self.worker.workRequested.connect(self.thread.start)
+		self.thread.started.connect(self.worker.doWork)
+		self.worker.finished.connect(self.thread.quit)
+		#self.worker.finished.connect(self.find_file_to_transfer)
 		
 		#process Here
 		self.process=PCore.QProcess()
@@ -264,6 +300,7 @@ class ProcessManager(PGui.QWidget):
 	def on_disconnection(self):
 		self.update_Layout(connected=False)
 		self.sendsMessage.emit("Socket was disconnected")
+		self.model.server_close()
 		
 	def display_error(self,socketError):
 		if socketError == PNet.QAbstractSocket.RemoteHostClosedError:
@@ -284,10 +321,6 @@ class ProcessManager(PGui.QWidget):
 		out.writeString(instruction)
 		if instruction=="processList" and len(List)!=0:
 			out.writeQStringList(List)
-		elif instruction=="stopProcess":
-			pass
-		elif instruction=="myProcessState":
-			pass
 		else:
 			print "send_protocol : instruction not known"
 			return 0
@@ -317,7 +350,9 @@ class ProcessManager(PGui.QWidget):
 		#print "list=",prmNameList
 		#print "write done"
 
-
+#---------------------------------------------------------------------------------------------------------
+	# receive instruction from server
+#---------------------------------------------------------------------------------------------------------
 	def read(self):
 		while self.tcpSocket.bytesAvailable():
 			print "read"
@@ -335,22 +370,46 @@ class ProcessManager(PGui.QWidget):
 			#read instruction
 			instruction=self.dataStream.readQString()
 			if instruction=="updateState":
-				self.model.beginResetModel()
 				stateList=self.dataStream.readQStringList()
 				print "receive state list",stateList
-				i=0
-				while (i+1)<len(stateList):
-					name=stateList[i]
-					state=stateList[i+1]
-					for experiment in self.model.experimentList:
-						if experiment.folder.dirName()==name:
-							experiment.state=state
-					i+=2
-				self.model.endResetModel()
-					
+				self.update_state(stateList)
+				
+			elif instruction=="expDone":
+				expDone=self.dataStream.readQStringList()
+				self.server_finished(expDone)
+				print "receive exp done",expDone
 			else:
 				print "received unknown instruction:",instruction
 			
+	def update_state(self,stateList):
+		self.model.beginResetModel()
+		i=0
+		while (i+1)<len(stateList):
+			name=stateList[i]
+			state=stateList[i+1]
+			for experiment in self.model.experimentList:
+				if experiment.folder.dirName()==name:
+					experiment.state=state
+			i+=2
+		self.model.endResetModel()
+		
+	def server_finished(self,expDone):
+		self.model.beginResetModel()
+		i=0
+		while (i+1)<len(expDone):
+			name=expDone[i]
+			isBackup=expDone[i+1]
+			for experiment in self.model.experimentList:
+				if experiment.folder.dirName()==name:
+					experiment.onServer=False
+					if isBackup=="True":
+						experiment.isBackup=True
+						experiment.state="results being transfered (NAS->local)"
+						self.worker.requestTransfer(experiment,folderNASPath=NAS_PATH+'/'+experiment.folder.dirName())
+					else:
+						experiment.isBackup=False
+			i+=2
+		self.model.endResetModel()
 	
 #---------------------------------------------------------------------------------------------------------
 	#List

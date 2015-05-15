@@ -7,6 +7,7 @@ import PySide.QtGui as PGui
 
 from experiment import Experiment, ExperimentOnServer
 
+#to do : check remove row/inser row, avoid reset model ?
 
 #------------------------------------------------------------------------------------------------------------------
 #       ExperimentModelBase: visualize experiment object
@@ -112,19 +113,20 @@ class ExperimentModelServer(ExperimentModelBase):
 		if nameLocal in self.names:
 			for experiment in self.experimentList:
 				if experiment.nameLocal==nameLocal:
+					self.beginResetModel()
+					experiment.reset(nameLocal,serverPath,NASPath)
+					self.endResetModel()
 					return experiment.state
 			return "error on server add_experiment"
 		else:
 			experiment=ExperimentOnServer(nameLocal,serverPath,NASPath)
-			if experiment.isOK:
-				self.beginResetModel()
-				row=len(self.experimentList)
-				self.beginInsertRows(PCore.QModelIndex(),row,row)
-				self.experimentList.append(experiment)
-				self.endInsertRows()
-				self.names.append(str(nameLocal))
-				self.endResetModel()
-				self.endResetModel()
+			self.beginResetModel()
+			row=len(self.experimentList)
+			self.beginInsertRows(PCore.QModelIndex(),row,row)
+			self.experimentList.append(experiment)
+			self.endInsertRows()
+			self.names.append(str(nameLocal))
+			self.endResetModel()
 			return experiment.state
 
 	def get_first_to_transfer(self):
@@ -137,11 +139,6 @@ class ExperimentModelServer(ExperimentModelBase):
 				return True
 		self.currentExperimentTransfer=None
 		return False
-
-	def server_close(self):
-		for experiment in self.experimentList:
-			if not experiment.isDone:
-				experiment.state=="unknown (server was closed)"
 
 
 #------------------------------------------------------------------------------------------------------------------
@@ -177,6 +174,13 @@ class ExperimentModel(ExperimentModelBase):
 			return experiment.state
 		self.endResetModel()
 		return "already in list"
+
+
+	def server_close(self):
+		for experiment in self.experimentList:
+			if experiment.onServer:
+				experiment.state=="unknown (server was closed)"
+
 
 	#-----------------------------------------------------------------------------------------------------
 	# On the whole list
