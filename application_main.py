@@ -1,4 +1,11 @@
 #! /home/david/anaconda/bin/python
+#-------------------------------------------------------------------------------------------------------------------
+#Path to the NAS (mounted on computer)
+NAS_PATH="/home/david/NAS02"
+#Path to your data folder
+ROOT='./test'
+#-------------------------------------------------------------------------------------------------------------------
+
 import sys
 import os 
 import signal
@@ -11,9 +18,6 @@ import PySide.QtGui as PGui
 from processManager import ProcessManager
 from fileBrowser import FileBrowser
 from experimentModel import ExperimentModel, Experiment
-
-#Path to your data folder
-ROOT='./test'
 
 #Property of the window
 WIDTH=1200
@@ -48,7 +52,7 @@ class MainWindow(PGui.QWidget):
 		
 		#Views
 		self.fileBrowser=FileBrowser(ROOT)
-		self.processManager=ProcessManager()
+		self.processManager=ProcessManager(NAS_PATH)
 		self.logView=LogView()
 
 		#Connect views

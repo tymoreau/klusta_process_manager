@@ -6,20 +6,22 @@ import PySide.QtCore as PCore
 import PySide.QtGui as PGui
 
 from experiment import Experiment, ExperimentOnServer
-
 #to do : check remove row/inser row, avoid reset model ?
 
 #------------------------------------------------------------------------------------------------------------------
 #       ExperimentModelBase: visualize experiment object
 #------------------------------------------------------------------------------------------------------------------
 class ExperimentModelBase(PCore.QAbstractTableModel):
+	changeChecked=PCore.Signal(object)
 	
-	def __init__(self,experimentList=[]):
+	def __init__(self,NASPath):
 		super(ExperimentModelBase,self).__init__()
 		
-		self.experimentList=experimentList
+		self.experimentList=[]
 		self.names=[]
 		self.currentExperiment=None
+		self.nbChecked=0
+		self.NASPath=NASPath
 
 	#-----------------------------------------------------------------------------------------------------
 	# Processing
@@ -42,6 +44,20 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 		self.beginResetModel()
 		self.currentExperiment.is_done(exitcode)
 		self.endResetModel()
+
+
+	#Transfer
+	def get_first_to_transfer(self):
+		for experiment in self.experimentList:
+			if experiment.toTransfer:
+				self.beginResetModel()
+				experiment.state="being transfered "+experiment.state_transfer()
+				self.currentExperimentTransfer=experiment
+				self.endResetModel()
+				return True
+		self.currentExperimentTransfer=None
+		return False
+
 
 	#----------------------------------------------------------------------------------------
 	# Overrided function related to view
@@ -113,10 +129,12 @@ class ExperimentModelServer(ExperimentModelBase):
 		if nameLocal in self.names:
 			for experiment in self.experimentList:
 				if experiment.nameLocal==nameLocal:
-					self.beginResetModel()
-					experiment.reset(nameLocal,serverPath,NASPath)
-					self.endResetModel()
+					if experiment.serverFinished:
+						self.beginResetModel()
+						experiment.reset(serverPath,NASPath)
+						self.endResetModel()
 					return experiment.state
+					
 			return "error on server add_experiment"
 		else:
 			experiment=ExperimentOnServer(nameLocal,serverPath,NASPath)
@@ -128,18 +146,7 @@ class ExperimentModelServer(ExperimentModelBase):
 			self.names.append(str(nameLocal))
 			self.endResetModel()
 			return experiment.state
-
-	def get_first_to_transfer(self):
-		for experiment in self.experimentList:
-			if experiment.toTransfer:
-				self.beginResetModel()
-				experiment.state="being transfered"
-				self.currentExperimentTransfer=experiment
-				self.endResetModel()
-				return True
-		self.currentExperimentTransfer=None
-		return False
-
+		
 
 #------------------------------------------------------------------------------------------------------------------
 #       ExperimentModel (list of Experiment)
@@ -150,18 +157,14 @@ class ExperimentModelServer(ExperimentModelBase):
 # Default : everything is checked
 
 class ExperimentModel(ExperimentModelBase):
-	changeChecked=PCore.Signal(object)
-	
-	def __init__(self,experimentList=[]):
-		ExperimentModelBase.__init__(self,experimentList)
-		self.currentExperiment=None
-		self.nbChecked=0
 
 	# add an experiment if not already in model
 	def add_experiment(self,folderPath):
 		self.beginResetModel()
-		if folderPath not in self.names:
-			experiment=Experiment(folderPath)
+		if folderPath in self.names:
+			return "already in list"
+		else:
+			experiment=Experiment(folderPath,self.NASPath)
 			if experiment.isOK:
 				row=len(self.experimentList)
 				self.beginInsertRows(PCore.QModelIndex(),row,row)
@@ -171,16 +174,56 @@ class ExperimentModel(ExperimentModelBase):
 				self.endInsertRows()
 				self.names.append(folderPath)
 				self.endResetModel()
+			else:
+				print "exp not ok:",experiment.name
 			return experiment.state
-		self.endResetModel()
-		return "already in list"
 
+	#-----------------------------------------------------------------------------------------------------
+	# Server
+	#-----------------------------------------------------------------------------------------------------
 
 	def server_close(self):
+		self.beginResetModel()
 		for experiment in self.experimentList:
 			if experiment.onServer:
-				experiment.state=="unknown (server was closed)"
-
+				experiment.state+=" ? /!\ server was closed"
+		self.endResetModel()
+		
+	#at least one experiment is done for the server
+	def server_finished(self,expDone):
+		self.beginResetModel()
+		i=0
+		while (i+1)<len(expDone):
+			name=expDone[i]
+			doneOnServer=expDone[i+1]
+			for experiment in self.experimentList:
+				if experiment.folder.dirName()==name:
+					experiment.onServer=False
+					if doneOnServer=="True":
+						if experiment.check_remote_folder_done(experiment.NASfolder):
+							experiment.isBackup=True
+							experiment.state="results waiting to be transfered (NAS->local)"
+							experiment.toTransfer=True
+							experiment.localToNAS=False
+						else:
+							experiment.state="server finished job, but no kwik file on NAS"
+					else:
+						experiment.isBackup=False
+			i+=2
+		self.endResetModel()
+		
+		
+	def update_state(self,stateList):
+		self.beginResetModel()
+		i=0
+		while (i+1)<len(stateList):
+			name=stateList[i]
+			state=stateList[i+1]
+			for experiment in self.experimentList:
+				if experiment.folder.dirName()==name:
+					experiment.state=state
+			i+=2
+		self.endResetModel()
 
 	#-----------------------------------------------------------------------------------------------------
 	# On the whole list
@@ -228,11 +271,11 @@ class ExperimentModel(ExperimentModelBase):
 		self.beginResetModel()
 		nbFound=0
 		for experiment in self.experimentList:
-			if experiment.isChecked and not experiment.isDone and not experiment.isRunning and not experiment.onServer:
+			if experiment.isChecked and (not experiment.isRunning) and (not experiment.onServer) and (not experiment.isDone):
 				if experiment.check_if_done():
 					self.isDone=True
 					self.state="Already done (found a kwik file)"
-				else:
+				elif experiment.check_files_exist():
 					experiment.state="waiting to be process"
 					experiment.toProcess=True
 					nbFound+=1
@@ -243,15 +286,37 @@ class ExperimentModel(ExperimentModelBase):
 	def selectionUpdate_process_server(self):
 		self.beginResetModel()
 		nbFound=0
+		print self.experimentList
 		for experiment in self.experimentList:
-			if experiment.isChecked and not experiment.isDone and not experiment.isRunning and not experiment.onServer:
+			print "exp:",experiment.name, experiment.rawOnNAS, experiment.onServer,experiment.toTransfer
+			if experiment.isChecked and (not experiment.isRunning) and (not experiment.onServer) and (not experiment.isDone):
 				if experiment.check_if_done():
-					self.isDone=True
-					self.state="Already done (found a kwik file)"
+					experiment.isDone=True
+					experiment.state="Already done (found a kwik file)"
+				elif experiment.check_remote_folder_done(experiment.NASfolder):
+					experiment.isDone=True
+					experiment.state="Already done (found a kwik file on NAS)"
+					if experiment.check_remote_folder_raw(experiment.NASfolder):
+						experiment.isBackup=True
+						experiment.rawOnNAS=True
+						experiment.state="Already done and backup"
+					else:
+						experiment.state="Weird: kwik file on NAS but no raw data"
 				else:
-					experiment.state="waiting for server response"
-					experiment.onServer=True
-					nbFound+=1
+					if experiment.check_remote_folder_raw(experiment.NASfolder):
+						experiment.state="sending request to server"
+						experiment.toSend=True
+						experiment.onServer=True
+						experiment.rawOnNAS=True
+						nbFound+=1
+					else:
+						experiment.rawOnNAS=False
+						experiment.state="waiting to be transfered (local->NAS)"
+						experiment.toTransfer=True
+						experiment.localToNAS=True
+						experiment.onServer=True
+						nbFound+=1
+			print "exp done:",experiment.name, experiment.rawOnNAS, experiment.onServer,experiment.toTransfer
 		self.endResetModel()
 		return nbFound
 		
@@ -260,27 +325,31 @@ class ExperimentModel(ExperimentModelBase):
 		self.beginResetModel()
 		nbFound=0
 		for experiment in self.experimentList:
-			if experiment.isChecked and experiment.toProcess and not experiment.onServer:
+			if experiment.isChecked and experiment.toProcess and (not experiment.onServer):
 				experiment.state="-- (cancel)"
 				experiment.toProcess=False
+				nbFound+=1
+			if experiment.isChecked and experiment.toTransfer and (not experiment.onServer):
+				experiment.state="-- (cancel)"
+				experiment.toTransfer=False
 				nbFound+=1
 		self.endResetModel()
 		return nbFound
 		
-	#user click on "restart": update state and boolean of selection
-	def selectionUpdate_restart(self):
-		self.beginResetModel()
-		nbFound=0
-		for experiment in self.experimentList:
-			if experiment.isChecked and not experiment.onServer:
-				experiment.state="waiting to be process (overwrite)"
-				experiment.toProcess=True
-				experiment.crashed=False
-				experiment.isDone=False
-				experiment.arguments.append("--overwrite")
-				nbFound+=1
-		self.endResetModel()
-		return nbFound
+	##user click on "restart": update state and boolean of selection
+	#def selectionUpdate_restart(self):
+		#self.beginResetModel()
+		#nbFound=0
+		#for experiment in self.experimentList:
+			#if experiment.isChecked and not experiment.onServer:
+				#experiment.state="waiting to be process (overwrite)"
+				#experiment.toProcess=True
+				#experiment.crashed=False
+				#experiment.isDone=False
+				#experiment.arguments.append("--overwrite")
+				#nbFound+=1
+		#self.endResetModel()
+		#return nbFound
 
 	#user click on "remove"
 	def selectionUpdate_remove(self):

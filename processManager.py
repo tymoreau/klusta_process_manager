@@ -16,7 +16,7 @@ SEPARATOR='---'*15
 #Command to perform on list
 PROGRAM="klusta"
 
-NAS_PATH="/home/david/fakeNAS"
+NAS_PATH="/home/david/NAS02"
 
 #Connection to remote computer
 IP="10.51.101.29"
@@ -71,16 +71,17 @@ class Worker(PCore.QObject):
 		super(Worker,self).__init__()
 		self.isWorking=False
 		
-	def requestTransfer(self,exp,folderNASPath):
+	def requestTransfer(self,model):
 		if not self.isWorking:
-			self.exp=exp
-			self.folderNASPath=folderNASPath
+			self.model=model
 			self.workRequested.emit()
 	
 	def doWork(self):
 		if not self.isWorking:
 			self.isWorking=True
-			self.exp.copy_fromNAS_toLocal(self.folderNASPath)
+			self.model.beginResetModel()
+			self.model.currentExperimentTransfer.transfer()
+			self.model.endResetModel()
 			self.isWorking=False
 			self.finished.emit()
 
@@ -93,11 +94,11 @@ class Worker(PCore.QObject):
 class ProcessManager(PGui.QWidget):
 	sendsMessage=PCore.Signal(object)
 
-	def __init__(self):
+	def __init__(self,NASPath):
 		super(ProcessManager,self).__init__()
 		
 		#experimentModel
-		self.model=ExperimentModel()
+		self.model=ExperimentModel(NASPath)
 		self.model.changeChecked.connect(self.update_buttons)
 		
 		#table View
@@ -126,7 +127,7 @@ class ProcessManager(PGui.QWidget):
 		self.worker.workRequested.connect(self.thread.start)
 		self.thread.started.connect(self.worker.doWork)
 		self.worker.finished.connect(self.thread.quit)
-		#self.worker.finished.connect(self.find_file_to_transfer)
+		self.thread.finished.connect(self.find_file_to_transfer)
 		
 		#process Here
 		self.process=PCore.QProcess()
@@ -161,6 +162,9 @@ class ProcessManager(PGui.QWidget):
 		self.button_processHere=PGui.QPushButton("\nProcess here\n (klusta) \n")
 		self.button_processHere.clicked.connect(self.process_here)
 		self.button_processHere.setToolTip("On this computer, process the selected experiments (if they were not already process)")
+		#self.button_restart=PGui.QPushButton("Restart\n (klusta --overwrite)")
+		#self.button_restart.setToolTip("Restarts the selected experiments (if they were already processed or crashed)")
+		#self.button_restart.clicked.connect(self.restart)
 		
 		#process on server
 		self.button_connectServer=PGui.QPushButton("\nConnect to server\n")
@@ -168,7 +172,7 @@ class ProcessManager(PGui.QWidget):
 	
 		self.button_processServer=PGui.QPushButton("\nProcess on server\n (klusta) \n")
 		self.button_processServer.clicked.connect(self.process_server)
-		self.button_restartServer=PGui.QPushButton("Restart on server\n (klusta --overwrite)")
+		#self.button_restartServer=PGui.QPushButton("Restart on server\n (klusta --overwrite)")
 
 		#on a selection
 		self.button_cancel=PGui.QPushButton("Cancel")
@@ -177,9 +181,7 @@ class ProcessManager(PGui.QWidget):
 		self.button_remove=PGui.QPushButton("Remove/Kill")
 		self.button_remove.clicked.connect(self.remove)
 		self.button_remove.setToolTip("The selected experiments will be removed from the list.\n Waiting experiment will not be processed.\n Running experiments will be killed after a warning message")
-		self.button_restart=PGui.QPushButton("Restart\n (klusta --overwrite)")
-		self.button_restart.setToolTip("Restarts the selected experiments (if they were already processed or crashed)")
-		self.button_restart.clicked.connect(self.restart)
+		
 		
 		#on everything
 		self.button_clear=PGui.QPushButton("Clear")
@@ -199,7 +201,7 @@ class ProcessManager(PGui.QWidget):
 		self.button_processServer.setEnabled(boolean)
 		self.button_cancel.setEnabled(boolean)
 		self.button_remove.setEnabled(boolean)
-		self.button_restart.setEnabled(boolean)
+		#self.button_restart.setEnabled(boolean)
 		
 	def _edits(self):
 		self.label_ip=PGui.QLabel("IP")
@@ -226,12 +228,12 @@ class ProcessManager(PGui.QWidget):
 		self.vboxSelection.addWidget(self.button_processServer)
 		self.vboxSelection.addWidget(self.button_cancel)
 		self.vboxSelection.addWidget(self.button_remove)
-		self.vboxSelection.addWidget(self.button_restart)
-		self.vboxSelection.addWidget(self.button_restartServer)
+		#self.vboxSelection.addWidget(self.button_restart)
+		#self.vboxSelection.addWidget(self.button_restartServer)
 		frameSelection=PGui.QGroupBox("On Selection")
 		frameSelection.setLayout(self.vboxSelection)
 		self.button_processServer.hide()
-		self.button_restartServer.hide()
+		#self.button_restartServer.hide()
 		
 		#Middle pannel 
 		self.vboxFrame=PGui.QVBoxLayout()
@@ -265,7 +267,7 @@ class ProcessManager(PGui.QWidget):
 		else:
 			self.frameServer.show()
 			self.button_processServer.hide()
-			self.button_restartServer.hide()
+			#self.button_restartServer.hide()
 
 #---------------------------------------------------------------------------------------------------------
 	#Server related
@@ -329,26 +331,25 @@ class ProcessManager(PGui.QWidget):
 		return block
 	
 	def process_server(self):
-		nameList=[]
 		self.model.selectionUpdate_process_server()
-		for experiment in self.model.experimentList:
-			if experiment.onServer:
-				nameList.append(experiment.folder.dirName())
-		block=self.send_protocol("processList",List=nameList)
-		if block!=0:
-			self.tcpSocket.write(block)
-			print "process server, send list=",nameList
+		self.find_file_to_transfer()
+		self.send_list_to_process()
 		
-	#def restart_server(self):
-		#prmNameList=[]
-		#self.model.selectionUpdate_restart_server()
-		#for experiment in self.model.experimentList:
-			#if experiment.onServer:
-				#prmNameList.append(str(experiment.prm))
-		#block=self.send_protocol("processList",List=prmNameList)
-		#self.tcpSocket.write(block)
-		#print "list=",prmNameList
-		#print "write done"
+	def send_list_to_process(self):
+		nameList=[]
+		self.model.beginResetModel()
+		for experiment in self.model.experimentList:
+			if experiment.onServer and experiment.rawOnNAS and experiment.toSend:
+				nameList.append(experiment.folder.dirName())
+				experiment.toSend=False
+				experiment.state="waiting for server response"
+		self.model.endResetModel()
+		if len(nameList)>0:
+			block=self.send_protocol("processList",List=nameList)
+			if block!=0:
+				self.tcpSocket.write(block)
+				print "process server, send list=",nameList
+
 
 #---------------------------------------------------------------------------------------------------------
 	# receive instruction from server
@@ -372,44 +373,32 @@ class ProcessManager(PGui.QWidget):
 			if instruction=="updateState":
 				stateList=self.dataStream.readQStringList()
 				print "receive state list",stateList
-				self.update_state(stateList)
+				self.model.update_state(stateList)
 				
 			elif instruction=="expDone":
 				expDone=self.dataStream.readQStringList()
-				self.server_finished(expDone)
+				self.model.server_finished(expDone)
+				self.find_file_to_transfer()
 				print "receive exp done",expDone
 			else:
 				print "received unknown instruction:",instruction
 			
-	def update_state(self,stateList):
-		self.model.beginResetModel()
-		i=0
-		while (i+1)<len(stateList):
-			name=stateList[i]
-			state=stateList[i+1]
-			for experiment in self.model.experimentList:
-				if experiment.folder.dirName()==name:
-					experiment.state=state
-			i+=2
-		self.model.endResetModel()
-		
-	def server_finished(self,expDone):
-		self.model.beginResetModel()
-		i=0
-		while (i+1)<len(expDone):
-			name=expDone[i]
-			isBackup=expDone[i+1]
-			for experiment in self.model.experimentList:
-				if experiment.folder.dirName()==name:
-					experiment.onServer=False
-					if isBackup=="True":
-						experiment.isBackup=True
-						experiment.state="results being transfered (NAS->local)"
-						self.worker.requestTransfer(experiment,folderNASPath=NAS_PATH+'/'+experiment.folder.dirName())
-					else:
-						experiment.isBackup=False
-			i+=2
-		self.model.endResetModel()
+
+
+#---------------------------------------------------------------------------------------------------------
+	#Transfer
+#---------------------------------------------------------------------------------------------------------
+	#Transfer a file if possible 
+	def find_file_to_transfer(self):
+		self.send_list_to_process()
+		#if there is not already a transfer running
+		if not self.thread.isRunning():
+			print "thread was not running"
+			if self.model.get_first_to_transfer():
+				#do the transfer in another thread
+				print "request transfer of:",self.model.currentExperimentTransfer.name
+				self.worker.requestTransfer(self.model)
+				return
 	
 #---------------------------------------------------------------------------------------------------------
 	#List
@@ -429,13 +418,13 @@ class ProcessManager(PGui.QWidget):
 		nbFound=self.model.selectionUpdate_cancel()
 		self.sendsMessage.emit("Canceled %i experiment(s)" %nbFound)
 		
-	#restart the selection (if experiment isDone)
-	def restart(self):
-		nbFound=self.model.selectionUpdate_restart()
-		self.sendsMessage.emit("Restarted %i experiment(s)" %nbFound)
-		if not self.isRunning:
-			if self.model.get_first_to_process():
-				self.run_one()
+	##restart the selection (if experiment isDone)
+	#def restart(self):
+		#nbFound=self.model.selectionUpdate_restart()
+		#self.sendsMessage.emit("Restarted %i experiment(s)" %nbFound)
+		#if not self.isRunning:
+			#if self.model.get_first_to_process():
+				#self.run_one()
 	
 	#remove selection from the list
 	#if current process in the list, kill it

@@ -1,3 +1,7 @@
+NAS_PATH="/home/david/NAS02"
+SERVER_PATH="/home/david/dataServer"
+#-------------------------------------------------------------------------------------------------------------------
+
 import signal
 import sys
 import socket
@@ -18,8 +22,6 @@ PORT=8000
 
 SEPARATOR='---'*15
 
-NAS_PATH="/home/david/fakeNAS"
-SERVER_PATH="/home/david/dataServer"
 PROGRAM="klusta"
 
 #-------------------------------------------------------------------------------------------------------------------
@@ -309,13 +311,18 @@ class ProcessView(PGui.QWidget):
 			env.append(newitem)
 		self.process.setEnvironment(env)
 		
+		
+		#buttons
+		self.button_kill=PGui.QPushButton("Kill")
+		self.button_kill.clicked.connect(self.kill_current)
+		
 		#Client tables
 		self.vboxClient=PGui.QVBoxLayout()
+		self.vboxClient.addWidget(self.button_kill)
 		self.setLayout(self.vboxClient)
 		
 		#console
 		self.console=ConsoleView()
-
 
 	def new_connection(self):
 		while self.server.hasPendingConnections():
@@ -339,6 +346,11 @@ class ProcessView(PGui.QWidget):
 
 	#--------------------------------------------------------------------------------------------
 	#Process
+	
+	def kill_current(self):
+		if self.isRunning:
+			self.clientDict[self.currentClient].model.currentExperiment.crashed=True
+			self.process.kill()
 
 	def try_launch_process(self):
 		if not self.isRunning:
@@ -349,13 +361,22 @@ class ProcessView(PGui.QWidget):
 				print "found client to process, send list:"
 				self.clientDict[self.currentClient].update_state_list()
 
+	#loop trough every client and check if they have an experiment to process
+	#if possible, choose a different client than the current one
 	def find_file_to_process(self):
+		found=False
 		for ip,client in self.clientDict.items():
 			if client.model.get_first_to_process():
-				self.currentClient=ip
-				return True
-		self.currentClient=None
-		return False
+				if ip==self.currentClient:
+					found=True
+				else:
+					self.currentClient=ip
+					return True
+		if found:
+			return True
+		else:
+			self.currentClient=None
+			return False
 
 	def go_to_next(self,exitcode):
 		self.clientDict[self.currentClient].model.currentExperiment_isDone(exitcode)
@@ -391,7 +412,9 @@ class ProcessView(PGui.QWidget):
 
 	#close everything properly
 	def close(self):
-		self.process.kill()
+		if not self.process.waitForFinished(1):
+			self.process.kill()
+			self.process.waitForFinished(1)
 		self.thread.exit(1)
 		for ip,client in self.clientDict.items():
 			client.tcpSocket.flush()
