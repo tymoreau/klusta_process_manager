@@ -14,7 +14,7 @@ from experiment import Experiment, ExperimentOnServer
 class ExperimentModelBase(PCore.QAbstractTableModel):
 	changeChecked=PCore.Signal(object)
 	
-	def __init__(self,NASPath):
+	def __init__(self,NASPath,serverPath=None):
 		super(ExperimentModelBase,self).__init__()
 		
 		self.experimentList=[]
@@ -22,6 +22,7 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 		self.currentExperiment=None
 		self.nbChecked=0
 		self.NASPath=NASPath
+		self.serverPath=serverPath
 
 	#-----------------------------------------------------------------------------------------------------
 	# Processing
@@ -123,21 +124,20 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 class ExperimentModelServer(ExperimentModelBase):
 	
 	# add an experiment if not already in model
-	def add_experiment(self,nameLocal,serverPath,NASPath):
+	def add_experiment(self,nameLocal):
 		nameLocal=str(nameLocal)
-		print "self.names:",self.names
 		if nameLocal in self.names:
 			for experiment in self.experimentList:
 				if experiment.nameLocal==nameLocal:
 					if experiment.serverFinished:
 						self.beginResetModel()
-						experiment.reset(serverPath,NASPath)
+						experiment.reset(serverPath,self.NASPath)
 						self.endResetModel()
 					return experiment.state
 					
 			return "error on server add_experiment"
 		else:
-			experiment=ExperimentOnServer(nameLocal,serverPath,NASPath)
+			experiment=ExperimentOnServer(nameLocal,self.serverPath,self.NASPath)
 			self.beginResetModel()
 			row=len(self.experimentList)
 			self.beginInsertRows(PCore.QModelIndex(),row,row)
@@ -174,8 +174,6 @@ class ExperimentModel(ExperimentModelBase):
 				self.endInsertRows()
 				self.names.append(folderPath)
 				self.endResetModel()
-			else:
-				print "exp not ok:",experiment.name
 			return experiment.state
 
 	#-----------------------------------------------------------------------------------------------------
@@ -286,9 +284,7 @@ class ExperimentModel(ExperimentModelBase):
 	def selectionUpdate_process_server(self):
 		self.beginResetModel()
 		nbFound=0
-		print self.experimentList
 		for experiment in self.experimentList:
-			print "exp:",experiment.name, experiment.rawOnNAS, experiment.onServer,experiment.toTransfer
 			if experiment.isChecked and (not experiment.isRunning) and (not experiment.onServer) and (not experiment.isDone):
 				if experiment.check_if_done():
 					experiment.isDone=True
@@ -316,7 +312,6 @@ class ExperimentModel(ExperimentModelBase):
 						experiment.localToNAS=True
 						experiment.onServer=True
 						nbFound+=1
-			print "exp done:",experiment.name, experiment.rawOnNAS, experiment.onServer,experiment.toTransfer
 		self.endResetModel()
 		return nbFound
 		
@@ -335,21 +330,6 @@ class ExperimentModel(ExperimentModelBase):
 				nbFound+=1
 		self.endResetModel()
 		return nbFound
-		
-	##user click on "restart": update state and boolean of selection
-	#def selectionUpdate_restart(self):
-		#self.beginResetModel()
-		#nbFound=0
-		#for experiment in self.experimentList:
-			#if experiment.isChecked and not experiment.onServer:
-				#experiment.state="waiting to be process (overwrite)"
-				#experiment.toProcess=True
-				#experiment.crashed=False
-				#experiment.isDone=False
-				#experiment.arguments.append("--overwrite")
-				#nbFound+=1
-		#self.endResetModel()
-		#return nbFound
 
 	#user click on "remove"
 	def selectionUpdate_remove(self):

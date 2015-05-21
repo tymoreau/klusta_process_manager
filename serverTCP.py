@@ -1,5 +1,5 @@
-NAS_PATH="/home/david/NAS02"
-SERVER_PATH="/home/david/dataServer"
+NAS_PATH="./test/fakeNAS"
+SERVER_PATH="./test/dataServer"
 #-------------------------------------------------------------------------------------------------------------------
 
 import signal
@@ -48,7 +48,7 @@ class Client(PCore.QObject):
 		self.connected=True
 		
 		#model
-		self.model=ExperimentModelServer()
+		self.model=ExperimentModelServer(NAS_PATH,SERVER_PATH)
 		self.stateList=[]
 		
 		#table View
@@ -103,7 +103,6 @@ class Client(PCore.QObject):
 			#read instruction
 			instruction=self.dataStream.readQString()
 			if instruction=="processList":
-				print("client %s sends processList" %self.ip)
 				self.instruction_process_list()
 			else:
 				print("client %s sends unknown instruction:%s"%(self.ip,instruction))
@@ -114,7 +113,7 @@ class Client(PCore.QObject):
 		nameList=self.dataStream.readQStringList()
 		#add experiment if they are ok
 		for nameLocal in nameList:
-			self.model.add_experiment(nameLocal,SERVER_PATH,NAS_PATH)
+			self.model.add_experiment(nameLocal)
 
 		#send change to client, signal server
 		self.update_state_list()
@@ -140,13 +139,11 @@ class Client(PCore.QObject):
 		block=self.send_protocol("expDone",List=expDone)
 		if block!=0:
 			self.tcpSocket.write(block)
-			print "Send to client exp done: ",expDone
 
 	def send_update_state(self):
 		block=self.send_protocol("updateState",List=self.stateList)
 		if block!=0:
 			self.tcpSocket.write(block)
-			print "Send to client: ",self.stateList
 			self.stateList=[]
 
 	def send_protocol(self,instruction,List=[]):
@@ -311,13 +308,15 @@ class ProcessView(PGui.QWidget):
 			env.append(newitem)
 		self.process.setEnvironment(env)
 		
-		
-		#buttons
+		#buttons and label
 		self.button_kill=PGui.QPushButton("Kill")
 		self.button_kill.clicked.connect(self.kill_current)
+		self.label_path=PGui.QLabel(SERVER_PATH)
 		
 		#Client tables
 		self.vboxClient=PGui.QVBoxLayout()
+		self.vboxClient.setAlignment(PCore.Qt.AlignTop)
+		self.vboxClient.addWidget(self.label_path)
 		self.vboxClient.addWidget(self.button_kill)
 		self.setLayout(self.vboxClient)
 		
@@ -358,7 +357,6 @@ class ProcessView(PGui.QWidget):
 				self.isRunning=True
 				self.console.separator(self.clientDict[self.currentClient].model.currentExperiment)
 				self.clientDict[self.currentClient].model.currentExperiment.run_klusta(self.process)
-				print "found client to process, send list:"
 				self.clientDict[self.currentClient].update_state_list()
 
 	#loop trough every client and check if they have an experiment to process
@@ -380,12 +378,10 @@ class ProcessView(PGui.QWidget):
 
 	def go_to_next(self,exitcode):
 		self.clientDict[self.currentClient].model.currentExperiment_isDone(exitcode)
-		print "process done, send list:"
 		self.clientDict[self.currentClient].update_state_list()
 		if self.find_file_to_process():
 			self.console.separator(self.clientDict[self.currentClient].model.currentExperiment)
 			self.clientDict[self.currentClient].model.currentExperiment.run_klusta(self.process)
-			print "found client to process, send list:"
 			self.clientDict[self.currentClient].update_state_list()
 		else:
 			self.isRunning=False
@@ -395,30 +391,27 @@ class ProcessView(PGui.QWidget):
 	#--------------------------------------------------------------------------------------------
 	#Transfer a file if possible 
 	def find_file_to_transfer(self):
-		print "find file to transfer"
 		#if there is not already a transfer running
 		if not self.thread.isRunning():
 			for ip,client in self.clientDict.items():
 				#test if the client have a file to transfer
 				if client.model.get_first_to_transfer():
-					print "found client to transfer, send list:"
 					client.update_state_list()
 					#do the transfer in another thread
 					self.worker.requestTransfer(client)
 					return
-			print "no client found"
-		else:
-			print "thread already running"
 
-	#close everything properly
+
+	#(try to) close everything properly
 	def close(self):
 		if not self.process.waitForFinished(1):
 			self.process.kill()
 			self.process.waitForFinished(1)
 		self.thread.exit(1)
 		for ip,client in self.clientDict.items():
-			client.tcpSocket.flush()
-			client.tcpSocket.disconnectFromHost()
+			if client.tcpSocket.isValid():
+				client.tcpSocket.flush()
+				client.tcpSocket.disconnectFromHost()
 		self.server.close()
 		
 
@@ -503,15 +496,25 @@ class MainWindow(PGui.QWidget):
 
 if __name__=='__main__':
 	PGui.QApplication.setStyle("cleanlooks")
-	
 	app = PGui.QApplication(sys.argv)
 	
-	#to be able to close wth ctrl+c
-	signal.signal(signal.SIGINT, signal.SIG_DFL)
-	
-	win=MainWindow()
-	
-	win.show()
+	nas=PCore.QDir(NAS_PATH)
+	server=PCore.QDir(SERVER_PATH)
+	if not nas.exists():
+		msgBox=PGui.QMessageBox()
+		msgBox.setText("NAS_PATH do not refers to a folder: "+str(NAS_PATH))
+		msgBox.exec_()
+	elif not server.exists():
+		msgBox=PGui.QMessageBox()
+		msgBox.setText("SERVER_PATH do not refers to a folder: "+str(SERVER_PATH))
+		msgBox.exec_()
+	else:
+		#to be able to close wth ctrl+c
+		signal.signal(signal.SIGINT, signal.SIG_DFL)
+		
+		win=MainWindow()
+		
+		win.show()
 
-	sys.exit(app.exec_())
+		sys.exit(app.exec_())
 

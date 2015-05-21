@@ -1,9 +1,9 @@
 #! /home/david/anaconda/bin/python
 #-------------------------------------------------------------------------------------------------------------------
 #Path to the NAS (mounted on computer)
-NAS_PATH="/home/david/NAS02"
+NAS_PATH="./test/fakeNAS"
 #Path to your data folder
-ROOT='./test'
+ROOT='./test/dataLocal'
 #-------------------------------------------------------------------------------------------------------------------
 
 import sys
@@ -143,14 +143,19 @@ class MainWindow(PGui.QWidget):
 
 if __name__ == '__main__':
 	PGui.QApplication.setStyle("cleanlooks")
-	
 	app = PGui.QApplication(sys.argv)
 	
-	#to be able to close wth ctrl+c
-	signal.signal(signal.SIGINT, signal.SIG_DFL)
-	
-	win=MainWindow()
-	win.show()
+	nas=PCore.QDir(NAS_PATH)
+	if not nas.exists():
+		msgBox=PGui.QMessageBox()
+		msgBox.setText("NAS_PATH do not refers to a folder: "+str(NAS_PATH))
+		msgBox.exec_()
+	else:
+		#to be able to close wth ctrl+c
+		signal.signal(signal.SIGINT, signal.SIG_DFL)
+		
+		win=MainWindow()
+		win.show()
 
-	sys.exit(app.exec_())
+		sys.exit(app.exec_())
 

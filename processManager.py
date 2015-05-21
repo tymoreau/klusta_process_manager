@@ -162,9 +162,6 @@ class ProcessManager(PGui.QWidget):
 		self.button_processHere=PGui.QPushButton("\nProcess here\n (klusta) \n")
 		self.button_processHere.clicked.connect(self.process_here)
 		self.button_processHere.setToolTip("On this computer, process the selected experiments (if they were not already process)")
-		#self.button_restart=PGui.QPushButton("Restart\n (klusta --overwrite)")
-		#self.button_restart.setToolTip("Restarts the selected experiments (if they were already processed or crashed)")
-		#self.button_restart.clicked.connect(self.restart)
 		
 		#process on server
 		self.button_connectServer=PGui.QPushButton("\nConnect to server\n")
@@ -172,7 +169,6 @@ class ProcessManager(PGui.QWidget):
 	
 		self.button_processServer=PGui.QPushButton("\nProcess on server\n (klusta) \n")
 		self.button_processServer.clicked.connect(self.process_server)
-		#self.button_restartServer=PGui.QPushButton("Restart on server\n (klusta --overwrite)")
 
 		#on a selection
 		self.button_cancel=PGui.QPushButton("Cancel")
@@ -201,7 +197,6 @@ class ProcessManager(PGui.QWidget):
 		self.button_processServer.setEnabled(boolean)
 		self.button_cancel.setEnabled(boolean)
 		self.button_remove.setEnabled(boolean)
-		#self.button_restart.setEnabled(boolean)
 		
 	def _edits(self):
 		self.label_ip=PGui.QLabel("IP")
@@ -228,12 +223,9 @@ class ProcessManager(PGui.QWidget):
 		self.vboxSelection.addWidget(self.button_processServer)
 		self.vboxSelection.addWidget(self.button_cancel)
 		self.vboxSelection.addWidget(self.button_remove)
-		#self.vboxSelection.addWidget(self.button_restart)
-		#self.vboxSelection.addWidget(self.button_restartServer)
 		frameSelection=PGui.QGroupBox("On Selection")
 		frameSelection.setLayout(self.vboxSelection)
 		self.button_processServer.hide()
-		#self.button_restartServer.hide()
 		
 		#Middle pannel 
 		self.vboxFrame=PGui.QVBoxLayout()
@@ -263,11 +255,9 @@ class ProcessManager(PGui.QWidget):
 		if connected:
 			self.frameServer.hide()
 			self.button_processServer.show()
-			#self.button_restartServer.show()
 		else:
 			self.frameServer.show()
 			self.button_processServer.hide()
-			#self.button_restartServer.hide()
 
 #---------------------------------------------------------------------------------------------------------
 	#Server related
@@ -348,7 +338,6 @@ class ProcessManager(PGui.QWidget):
 			block=self.send_protocol("processList",List=nameList)
 			if block!=0:
 				self.tcpSocket.write(block)
-				print "process server, send list=",nameList
 
 
 #---------------------------------------------------------------------------------------------------------
@@ -356,7 +345,6 @@ class ProcessManager(PGui.QWidget):
 #---------------------------------------------------------------------------------------------------------
 	def read(self):
 		while self.tcpSocket.bytesAvailable():
-			print "read"
 			#read size of block
 			if self.tcpSocket.bytesAvailable() < 2:
 				print "client: bytes inf 2"
@@ -372,14 +360,12 @@ class ProcessManager(PGui.QWidget):
 			instruction=self.dataStream.readQString()
 			if instruction=="updateState":
 				stateList=self.dataStream.readQStringList()
-				print "receive state list",stateList
 				self.model.update_state(stateList)
 				
 			elif instruction=="expDone":
 				expDone=self.dataStream.readQStringList()
 				self.model.server_finished(expDone)
 				self.find_file_to_transfer()
-				print "receive exp done",expDone
 			else:
 				print "received unknown instruction:",instruction
 			
@@ -393,10 +379,8 @@ class ProcessManager(PGui.QWidget):
 		self.send_list_to_process()
 		#if there is not already a transfer running
 		if not self.thread.isRunning():
-			print "thread was not running"
 			if self.model.get_first_to_transfer():
 				#do the transfer in another thread
-				print "request transfer of:",self.model.currentExperimentTransfer.name
 				self.worker.requestTransfer(self.model)
 				return
 	
@@ -417,14 +401,6 @@ class ProcessManager(PGui.QWidget):
 	def cancel(self):
 		nbFound=self.model.selectionUpdate_cancel()
 		self.sendsMessage.emit("Canceled %i experiment(s)" %nbFound)
-		
-	##restart the selection (if experiment isDone)
-	#def restart(self):
-		#nbFound=self.model.selectionUpdate_restart()
-		#self.sendsMessage.emit("Restarted %i experiment(s)" %nbFound)
-		#if not self.isRunning:
-			#if self.model.get_first_to_process():
-				#self.run_one()
 	
 	#remove selection from the list
 	#if current process in the list, kill it
@@ -494,14 +470,7 @@ if __name__=='__main__':
 
 	
 	win=ProcessManager()
-	
-	#Test Experiments
-	print win.model.add_experiment("/home/david/dataRat/Rat034_small")
-	print win.model.add_experiment("/home/david/dataRat/Rat034_small_number2")
-	print win.model.add_experiment("/home/david/Documents/app_0.3.0/test/animal02_date1/")
-	print win.model.add_experiment("/home/david/Documents/app_0.3.0/test/animal01_date2")
 
-	
 	win.setMinimumSize(1000,600)
 
 	win.show()

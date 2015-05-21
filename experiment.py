@@ -104,14 +104,11 @@ class Experiment(PCore.QObject):
 	#Transfer
 	#----------------------------------------------------------------------------------------------------------
 	def look_for_subfolder(self,folderName,root):
-		iterFolder=PCore.QDirIterator(root)
-		while True:
+		iterFolder=PCore.QDirIterator("./test/fakeNAS",["noFile"],PCore.QDir.AllDirs|PCore.QDir.NoDotAndDotDot,PCore.QDirIterator.Subdirectories)
+		while iterFolder.hasNext():
+			iterFolder.next()
 			if iterFolder.fileName()==folderName:
 				return PCore.QDir(iterFolder.filePath())
-			if iterFolder.hasNext():
-				iterFolder.next()
-			else:
-				break
 		return None
 	
 	def transfer(self):
@@ -144,7 +141,6 @@ class Experiment(PCore.QObject):
 		self.NASfolder.refresh()
 		if self.check_remote_folder_raw(self.NASfolder):
 			self.state="local files transfered to NAS"
-			print "files transfered raw "
 			self.rawOnNAS=True
 			if self.check_remote_folder_done(self.NASfolder):
 				self.isBackup=True
