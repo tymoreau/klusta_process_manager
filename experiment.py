@@ -6,7 +6,8 @@ import time
 import PySide.QtCore as PCore
 
 #Command to perform on list
-PROGRAM="klusta"
+#PROGRAM="klusta"
+PROGRAM="/home/david/anaconda/envs/klusta/bin/klusta"
 
 #------------------------------------------------------------------------------------------------------------------
 #       Experiment (on the local computer)
@@ -104,7 +105,7 @@ class Experiment(PCore.QObject):
 	#Transfer
 	#----------------------------------------------------------------------------------------------------------
 	def look_for_subfolder(self,folderName,root):
-		iterFolder=PCore.QDirIterator("./test/fakeNAS",["noFile"],PCore.QDir.AllDirs|PCore.QDir.NoDotAndDotDot,PCore.QDirIterator.Subdirectories)
+		iterFolder=PCore.QDirIterator(root,["noFile"],PCore.QDir.AllDirs|PCore.QDir.NoDotAndDotDot,PCore.QDirIterator.Subdirectories)
 		while iterFolder.hasNext():
 			iterFolder.next()
 			if iterFolder.fileName()==folderName:
@@ -193,11 +194,27 @@ class Experiment(PCore.QObject):
 	#Processing
 	#----------------------------------------------------------------------------------------------------------
 	def run_klusta(self,process):
+		self.toProcess=False
+		self.isRunning=True
+		
 		process.setWorkingDirectory(self.folder.absolutePath())
 		process.start(PROGRAM,self.arguments)
+		process.waitForStarted()
+		if process.error()==PCore.QProcess.FailedToStart:
+			print self.process.readAll()
+			self.state="failed to start process: "+PROGRAM
+			self.isRunning=False
+			return
+		
+		if not process.waitForStarted():
+			process.terminate() 
+			process.close()
+			self.state="could not start "+PROGRAM
+			self.isRunning=False
+			return
 		self.state="Klusta running"
-		self.isRunning=True
-		self.toProcess=False
+		
+		
 		
 	def is_done(self,exitcode):
 		self.isRunning=False
@@ -215,10 +232,11 @@ class Experiment(PCore.QObject):
 		if self.crashed:
 			self.folder.mkdir(name)
 			self.folder.setFilter(PCore.QDir.Files)
-			for fileName in self.folder.entryList():
-				if not (fileName.endswith(".raw.kwd") or fileName.endswith(".dat")):
-					if not (fileName.startswith("crash") or fileName.startswith("kill")):
-						self.folder.rename(fileName,name+"/"+fileName)
+			extension_list=["*.high.kwd","*.kwik","*.kwx","*.log","*.low.kwd","*.prb","*.prm"]
+			if self.rawData.fileName().endswith(".dat"):
+				self.folder.remove(self.name+".raw.kwd")
+			for fileName in self.folder.entryList(extension_list):
+				self.folder.rename(fileName,name+"/"+fileName)
 			self.serverFinished=True
 			self.folder.setFilter(PCore.QDir.AllEntries|PCore.QDir.NoDotAndDotDot)
 			self.crashed=False
@@ -466,11 +484,17 @@ class ExperimentOnServer(Experiment):
 	#Processing
 	#----------------------------------------------------------------------------------------------------------
 	def run_klusta(self,process):
-		process.setWorkingDirectory(self.folder.absolutePath())
-		process.start(PROGRAM,self.arguments)
-		self.state="Klusta running (on server)"
-		self.isRunning=True
-		self.toProcess=False
+		self.folder=self.serverFolder
+		if self.check_files_exist():
+			process.setWorkingDirectory(self.folder.absolutePath())
+			process.start(PROGRAM,self.arguments)
+			self.state="Klusta running (on server)"
+			self.isRunning=True
+			self.toProcess=False
+			return True
+		else:
+			self.toProcess=False
+			return False
 		
 		
 	def is_done(self,exitcode):

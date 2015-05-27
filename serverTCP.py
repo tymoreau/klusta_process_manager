@@ -1,5 +1,6 @@
 NAS_PATH="./test/fakeNAS"
 SERVER_PATH="./test/dataServer"
+PROGRAM="/home/david/anaconda/envs/klusta/bin/klusta"  #experiment.py !
 #-------------------------------------------------------------------------------------------------------------------
 
 import signal
@@ -22,7 +23,6 @@ PORT=8000
 
 SEPARATOR='---'*15
 
-PROGRAM="klusta"
 
 #-------------------------------------------------------------------------------------------------------------------
 #  CLIENT: tcpSocket to communicate with the tcpSocket of ProcessManager.py  ---- + other data on client
@@ -141,6 +141,7 @@ class Client(PCore.QObject):
 			self.tcpSocket.write(block)
 
 	def send_update_state(self):
+		print "send",self.stateList
 		block=self.send_protocol("updateState",List=self.stateList)
 		if block!=0:
 			self.tcpSocket.write(block)
@@ -309,8 +310,10 @@ class ProcessView(PGui.QWidget):
 		self.process.setEnvironment(env)
 		
 		#buttons and label
-		self.button_kill=PGui.QPushButton("Kill")
+		self.button_kill=PGui.QPushButton("Kill current")
 		self.button_kill.clicked.connect(self.kill_current)
+		self.button_clear=PGui.QPushButton("Clear")
+		self.button_clear.clicked.connect(self.clear)
 		self.label_path=PGui.QLabel(SERVER_PATH)
 		
 		#Client tables
@@ -318,6 +321,7 @@ class ProcessView(PGui.QWidget):
 		self.vboxClient.setAlignment(PCore.Qt.AlignTop)
 		self.vboxClient.addWidget(self.label_path)
 		self.vboxClient.addWidget(self.button_kill)
+		self.vboxClient.addWidget(self.button_clear)
 		self.setLayout(self.vboxClient)
 		
 		#console
@@ -350,6 +354,10 @@ class ProcessView(PGui.QWidget):
 		if self.isRunning:
 			self.clientDict[self.currentClient].model.currentExperiment.crashed=True
 			self.process.kill()
+			
+	def clear(self):
+		for ip,client in self.clientDict.items():
+			client.model.clear()
 
 	def try_launch_process(self):
 		if not self.isRunning:

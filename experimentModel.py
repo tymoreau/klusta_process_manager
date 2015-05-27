@@ -131,7 +131,7 @@ class ExperimentModelServer(ExperimentModelBase):
 				if experiment.nameLocal==nameLocal:
 					if experiment.serverFinished:
 						self.beginResetModel()
-						experiment.reset(serverPath,self.NASPath)
+						experiment.reset(self.serverPath,self.NASPath)
 						self.endResetModel()
 					return experiment.state
 					
@@ -146,6 +146,21 @@ class ExperimentModelServer(ExperimentModelBase):
 			self.names.append(str(nameLocal))
 			self.endResetModel()
 			return experiment.state
+		
+	def clear(self):
+		self.beginResetModel()
+		indexToRemove=[]
+		for index,experiment in enumerate(self.experimentList):
+			if experiment.serverFinished:
+				if experiment.nameLocal in self.names:
+					self.names.remove(experiment.nameLocal)
+				if experiment.isChecked:
+					self.nbChecked-=1
+				indexToRemove.append(index)
+		self.changeChecked.emit(self.nbChecked)
+		self.experimentList=[exp for index,exp in enumerate(self.experimentList) if index not in indexToRemove]
+		self.endResetModel()
+		return len(indexToRemove)
 		
 
 #------------------------------------------------------------------------------------------------------------------
@@ -251,8 +266,8 @@ class ExperimentModel(ExperimentModelBase):
 		indexToRemove=[]
 		for index,experiment in enumerate(self.experimentList):
 			if not experiment.toProcess and not experiment.isRunning:
-				if experiment.folder.absolutePath() in self.names:
-					self.names.remove(experiment.folder.absolutePath())
+				if experiment.folder.path() in self.names:
+					self.names.remove(experiment.folder.path())
 				if experiment.isChecked:
 					self.nbChecked-=1
 				indexToRemove.append(index)
@@ -351,7 +366,7 @@ class ExperimentModel(ExperimentModelBase):
 						experiment.crashed=True
 				elif not experiment.onServer:
 					#remove experiment
-					self.names.remove(experiment.folder.absolutePath())
+					self.names.remove(experiment.folder.path())
 					indexToRemove.append(index)
 					self.nbChecked-=1
 		self.changeChecked.emit(self.nbChecked)

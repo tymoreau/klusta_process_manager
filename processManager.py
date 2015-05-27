@@ -14,8 +14,7 @@ from experimentModel import ExperimentModel
 SEPARATOR='---'*15
 
 #Command to perform on list
-PROGRAM="klusta"
-
+PROGRAM="/home/david/anaconda/envs/klusta/bin/klusta"   #experiment.py !
 NAS_PATH="/home/david/NAS02"
 
 #Connection to remote computer
@@ -144,7 +143,9 @@ class ProcessManager(PGui.QWidget):
 			newitem=item.replace('/anaconda/bin:','/anaconda/envs/klusta/bin:')
 			env.remove(item)
 			env.append(newitem)
+		env.append(unicode("CONDA_DEFAULT_ENV=klusta"))
 		self.process.setEnvironment(env)
+		
 		
 		#Layout
 		self._buttons()
@@ -425,7 +426,8 @@ class ProcessManager(PGui.QWidget):
 		self.sendsMessage.emit("Process Here: found %i experiment(s) to process" %nbFound)
 		if not self.isRunning and nbFound>0:
 			if self.model.get_first_to_process():
-				self.run_one()
+				if not self.run_one():
+					self.isRunning=False
 
 	#run klusta on one experiment
 	def run_one(self):
