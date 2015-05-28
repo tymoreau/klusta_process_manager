@@ -100,7 +100,7 @@ class ProcessManager(PGui.QWidget):
 		self.process=PCore.QProcess()
 		self.process.finished.connect(self.try_process)
 		self.process.finished.connect(self.try_sync)
-		
+		self.wasKill=False
 		self.process.readyRead.connect(self.display_output)
 		self.process.setProcessChannelMode(PCore.QProcess.MergedChannels)
 
@@ -146,7 +146,9 @@ class ProcessManager(PGui.QWidget):
 		self.button_remove=PGui.QPushButton("Remove")
 		self.button_remove.clicked.connect(self.remove)
 		self.button_remove.setToolTip("Remove selected experiments from the list, if not running/syncing or waiting to be")
-		
+		self.button_kill=PGui.QPushButton("Kill")
+		self.button_kill.clicked.connect(self.kill)
+		self.button_kill.setToolTip("Kill current process (klusta, not sync)")
 		
 		#on everything
 		self.button_clear=PGui.QPushButton("Clear")
@@ -192,6 +194,7 @@ class ProcessManager(PGui.QWidget):
 		self.vboxSelection.addWidget(self.button_processServer)
 		self.vboxSelection.addWidget(self.button_cancel)
 		self.vboxSelection.addWidget(self.button_remove)
+		self.vboxSelection.addWidget(self.button_kill)
 		frameSelection=PGui.QGroupBox("On Selection")
 		frameSelection.setLayout(self.vboxSelection)
 		self.button_processServer.hide()
@@ -291,23 +294,8 @@ class ProcessManager(PGui.QWidget):
 	
 	def process_server(self):
 		self.model.selectionUpdate_process_server()
-		self.find_file_to_transfer()
-		self.send_list_to_process()
+		self.try_sync()
 		
-	def send_list_to_process(self):
-		nameList=[]
-		self.model.beginResetModel()
-		for experiment in self.model.experimentList:
-			if experiment.onServer and experiment.rawOnNAS and experiment.toSend:
-				nameList.append(experiment.folder.dirName())
-				experiment.toSend=False
-				experiment.state="waiting for server response"
-		self.model.endResetModel()
-		if len(nameList)>0:
-			block=self.send_protocol("processList",List=nameList)
-			if block!=0:
-				self.tcpSocket.write(block)
-
 
 #---------------------------------------------------------------------------------------------------------
 	# receive instruction from server
@@ -369,15 +357,25 @@ class ProcessManager(PGui.QWidget):
 #---------------------------------------------------------------------------------------------------------
 	#Transfer a file if possible 
 	def try_sync(self,exitcode=0):
-		#self.send_list_to_process()
 		#if there is not already a transfer running
 		if self.processSync.state()==PCore.QProcess.Running:
 			return
 		else:
 			self.model.sync_done(exitcode)
+			self.try_send()
 			if self.model.has_exp_to_sync():
 				self.model.sync_one_experiment(self.processSync)
 				return
+			
+	#Send experiment path on NAS to server
+	def try_send(self):
+		if self.tcpSocket.isValid():
+			NASPathList=self.model.list_to_send()
+			if len(NASPathList)>0:
+				block=self.send_protocol("processList",List=NASPathList)
+				if block!=0:
+					self.tcpSocket.write(block)
+				
 
 #---------------------------------------------------------------------------------------------------------
 	#Process Here
@@ -397,17 +395,20 @@ class ProcessManager(PGui.QWidget):
 		if self.process.state()==PCore.QProcess.Running:
 			return
 		else:
+			if self.wasKill:
+				self.wasKill=False
+				exitcode=42
 			self.model.process_done(exitcode)
 			if self.model.has_exp_to_process():
 				self.model.process_one_experiment(self.process)
 				self.console.separator(self.model.experimentList[self.model.indexProcess])
 				return
 
-			
 	def kill(self):
 		if self.model.kill_current():
 			self.process.kill()
-			self.sendsMessage.emit("Kill: killed process" %nbFound)
+			self.wasKill=True
+			self.sendsMessage.emit("Kill: killed process")
 		else:
 			self.sendsMessage.emit("Kill: did nothing")
 

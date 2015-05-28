@@ -159,7 +159,7 @@ class Experiment(PCore.QObject):
 		self.arguments=[]
 		
 		#General state
-		self.onServer=False #True: experiment being process/transfer on server
+		self.onServer=False #True: local experiment being process/transfer on server  (/!\ do not put to True on server side)
 		self.isDone=False   #True: has a kwik file
 		self.finish=False   #nothing more to do on the experiment    (useful ?)
 		
@@ -286,7 +286,7 @@ class Experiment(PCore.QObject):
 			return True
 		return False
 	
-	def remove(self):
+	def can_be_remove(self):
 		if self.isSyncing or self.isRunning or self.onServer or self.toProcess or self.toSync:
 			return False
 		return True
@@ -390,8 +390,8 @@ class Experiment(PCore.QObject):
 
 
 	def sync_done(self,exitcode):
-		#if not self.isSyncing:
-			#return
+		if not self.isSyncing:
+			return
 		self.isSyncing=False
 		if exitcode!=0:
 			self.state+="(fail,exitcode=%i)"%exitcode
@@ -426,7 +426,7 @@ class Experiment(PCore.QObject):
 	
 	
 	def is_done(self,exitcode):
-		if self.onServer:
+		if self.onServer or self.isDone:
 			return
 		self.isRunning=False
 		if exitcode==42:
@@ -440,15 +440,18 @@ class Experiment(PCore.QObject):
 			self.isDone=True
 			self.toSync=True
 			self.localToNAS=True
+			self.finish=True
+			return
 
 		if exitcode!=0:
 			self.folder.mkdir(name)
 			extension_list=["*.high.kwd","*.kwik","*.kwx","*.log","*.low.kwd","*.prb","*.prm"]
-			if self.rawData.fileName().endswith(".dat"):
+			if self.folder.rawData.fileName().endswith(".dat"):
 				self.folder.remove(self.name+".raw.kwd")
 			for fileName in self.folder.entryList(extension_list,PCore.QDir.Files):
 				self.folder.rename(fileName,name+"/"+fileName)
 			self.finish=True
+			self.toSync=False
 	
 
 

@@ -28,7 +28,7 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 		if folderPath in self.names:
 			for experiment in self.experimentList:
 				if experiment.path==folderPath:
-					if experiment.remove():    #=if nothing running/waiting and if not on server
+					if experiment.can_be_remove():    #=if nothing running/waiting and if not on server
 						self.beginResetModel()
 						experiment.refresh_state()
 						self.endResetModel()
@@ -53,7 +53,7 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 		self.beginResetModel()
 		indexToRemove=[]
 		for index,experiment in enumerate(self.experimentList):
-			if experiment.remove():
+			if experiment.can_be_remove():
 				if experiment.isChecked:
 					self.nbChecked-=1
 				indexToRemove.append(index)
@@ -106,7 +106,6 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 		#if yes, kill process (if it is still the current Experiment)
 		if answer==PGui.QMessageBox.Yes:
 			if self.experimentList[index].isRunning:
-				self.experimentList[index].is_done(exitcode=42)
 				return True
 		return False
 
@@ -140,7 +139,7 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 		self.experimentList[self.indexSync].sync_done(exitcode)
 		self.indexSync=None
 		self.endResetModel()
-
+		
 
 	#----------------------------------------------------------------------------------------
 	# Overrided function related to view
@@ -156,7 +155,7 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 		col=index.column()
 		if role==PCore.Qt.DisplayRole:
 			if col==0:
-				#print self.experimentList[row].name, self.experimentList[row].state             #display name,state to debug
+				print self.experimentList[row].name, self.experimentList[row].state          #display name,state to debug
 				return str( self.experimentList[row].name )
 			if col==1:
 				return str( self.experimentList[row].state )
@@ -217,6 +216,20 @@ class ExperimentModel(ExperimentModelBase):
 	#-----------------------------------------------------------------------------------------------------
 	# Server
 	#-----------------------------------------------------------------------------------------------------
+
+	#list of NAS path, to process on server
+	def list_to_send(self):
+		l=[]
+		for experiment in self.experimentList:
+			if experiment.onServer and experiment.toSend:
+				if not experiment.toSync and not experiment.isSyncing:
+					experiment.toSend=False
+					experiment.state="waiting for server response"
+					fullpath=experiment.NASFolder.absolutePath()    #/NAS/animalID/Experiments/animalID_date1
+					root=experiment.NASroot                         #/NAS
+					pathFromRoot=fullpath.replace(root,"")          #/animalID/Experiments/animalID_date1
+					l.append(pathFromRoot)
+		return l
 
 	def server_close(self):
 		self.beginResetModel()
@@ -319,7 +332,7 @@ class ExperimentModel(ExperimentModelBase):
 		indexToRemove=[]
 		for index,experiment in enumerate(self.experimentList):
 			if experiment.isChecked:
-				if experiment.remove():
+				if experiment.can_be_remove():
 					self.names.remove(experiment.path)
 					indexToRemove.append(index)
 					self.nbChecked-=1
