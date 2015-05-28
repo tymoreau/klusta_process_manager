@@ -14,8 +14,8 @@ from experimentModel import ExperimentModel
 SEPARATOR='---'*15
 
 #Command to perform on list
-PROGRAM="/home/david/anaconda/envs/klusta/bin/klusta"   #experiment.py !
-NAS_PATH="/home/david/NAS02"
+PROGRAM="/home/david/anaconda/envs/klusta/bin/klusta"   # to change in experiment.py !
+NAS_PATH="./test/fakeNAS"
 
 #Connection to remote computer
 IP="10.51.101.29"
@@ -50,7 +50,7 @@ class ConsoleView(PGui.QWidget):
 	def separator(self,experiment):
 		sep='<b>'+SEPARATOR+SEPARATOR+'</b> \n'
 		sep1='<b> Experiment: '+str(experiment.name)+'</b> \n'
-		sep2='Working directory: '+str(experiment.folder.absolutePath())+' \n'
+		sep2='Working directory: '+str(experiment.folder.path)+' \n'
 		sep3='Do: %s %s \n'%(PROGRAM," ".join(experiment.arguments))
 		sep4='<b>'+SEPARATOR+SEPARATOR+'</b>'
 		self.output.append(sep)
@@ -58,34 +58,6 @@ class ConsoleView(PGui.QWidget):
 		self.output.append(sep2)
 		self.output.append(sep3)
 		self.output.append(sep4)
-
-#-----------------------------------------------------------------------------
-# Thread to transfer NAS -- Local
-#------------------------------------------------------------------------------
-class Worker(PCore.QObject):
-	finished=PCore.Signal()
-	workRequested=PCore.Signal()
-	
-	def __init__(self):
-		super(Worker,self).__init__()
-		self.isWorking=False
-		
-	def requestTransfer(self,model):
-		if not self.isWorking:
-			self.model=model
-			self.workRequested.emit()
-	
-	def doWork(self):
-		if not self.isWorking:
-			self.isWorking=True
-			self.model.beginResetModel()
-			self.model.currentExperimentTransfer.transfer()
-			self.model.endResetModel()
-			self.isWorking=False
-			self.finished.emit()
-
-
-
 
 #---------------------------------------------------------------------------------------------------------
 # Process Manager
@@ -114,29 +86,25 @@ class ProcessManager(PGui.QWidget):
 		self.tcpSocket.stateChanged.connect(self.on_state_change)
 		self.tcpSocket.disconnected.connect(self.on_disconnection)
 		self.tcpSocket.readyRead.connect(self.read)
+		
 		#Reading data
 		self.blockSize=0
 		self.dataStream=PCore.QDataStream(self.tcpSocket)
 		self.dataStream.setVersion(PCore.QDataStream.Qt_4_0)
 		
 		#Transfer
-		self.thread=PCore.QThread()
-		self.worker=Worker()
-		self.worker.moveToThread(self.thread)
-		self.worker.workRequested.connect(self.thread.start)
-		self.thread.started.connect(self.worker.doWork)
-		self.worker.finished.connect(self.thread.quit)
-		self.thread.finished.connect(self.find_file_to_transfer)
+		self.processSync=PCore.QProcess()
+		self.processSync.finished.connect(self.try_sync)
 		
 		#process Here
 		self.process=PCore.QProcess()
-		self.process.finished.connect(self.go_to_next)
+		self.process.finished.connect(self.try_process)
+		self.process.finished.connect(self.try_sync)
+		
 		self.process.readyRead.connect(self.display_output)
 		self.process.setProcessChannelMode(PCore.QProcess.MergedChannels)
-		
-		self.isRunning=False
-		
-		#dealing with the klusta environment
+
+		#dealing with the klusta environment (not perfect)
 		env = PCore.QProcess.systemEnvironment()
 		itemToReplace=[item for item in env if item.startswith('PATH=')]
 		for item in itemToReplace:
@@ -145,7 +113,6 @@ class ProcessManager(PGui.QWidget):
 			env.append(newitem)
 		env.append(unicode("CONDA_DEFAULT_ENV=klusta"))
 		self.process.setEnvironment(env)
-		
 		
 		#Layout
 		self._buttons()
@@ -162,7 +129,7 @@ class ProcessManager(PGui.QWidget):
 		#process here
 		self.button_processHere=PGui.QPushButton("\nProcess here\n (klusta) \n")
 		self.button_processHere.clicked.connect(self.process_here)
-		self.button_processHere.setToolTip("On this computer, process the selected experiments (if they were not already process)")
+		self.button_processHere.setToolTip("On this computer, process the selected experiments")
 		
 		#process on server
 		self.button_connectServer=PGui.QPushButton("\nConnect to server\n")
@@ -170,20 +137,21 @@ class ProcessManager(PGui.QWidget):
 	
 		self.button_processServer=PGui.QPushButton("\nProcess on server\n (klusta) \n")
 		self.button_processServer.clicked.connect(self.process_server)
+		self.button_processServer.setToolTip("Sync to NAS the selected experiments and then ask server to process them - Sync back from NAS to local when done")
 
 		#on a selection
 		self.button_cancel=PGui.QPushButton("Cancel")
 		self.button_cancel.clicked.connect(self.cancel)
-		self.button_cancel.setToolTip("The selected experiments waiting to be processed will not be processed")
-		self.button_remove=PGui.QPushButton("Remove/Kill")
+		self.button_cancel.setToolTip("Cancel 'waiting to be processed/sync' on selected experiments")
+		self.button_remove=PGui.QPushButton("Remove")
 		self.button_remove.clicked.connect(self.remove)
-		self.button_remove.setToolTip("The selected experiments will be removed from the list.\n Waiting experiment will not be processed.\n Running experiments will be killed after a warning message")
+		self.button_remove.setToolTip("Remove selected experiments from the list, if not running/syncing or waiting to be")
 		
 		
 		#on everything
 		self.button_clear=PGui.QPushButton("Clear")
 		self.button_clear.clicked.connect(self.clear_list)
-		self.button_clear.setToolTip("Keeps only experiments being or waiting to be processed")
+		self.button_clear.setToolTip("Keeps only experiments being or waiting to be processed/sync")
 		self.button_selectAll=PGui.QPushButton("Select All")
 		self.button_selectAll.clicked.connect(self.model.selectAll)
 		self.button_selectNone=PGui.QPushButton("Select None")
@@ -366,25 +334,11 @@ class ProcessManager(PGui.QWidget):
 			elif instruction=="expDone":
 				expDone=self.dataStream.readQStringList()
 				self.model.server_finished(expDone)
-				self.find_file_to_transfer()
+				self.try_sync()
 			else:
 				print "received unknown instruction:",instruction
 			
 
-
-#---------------------------------------------------------------------------------------------------------
-	#Transfer
-#---------------------------------------------------------------------------------------------------------
-	#Transfer a file if possible 
-	def find_file_to_transfer(self):
-		self.send_list_to_process()
-		#if there is not already a transfer running
-		if not self.thread.isRunning():
-			if self.model.get_first_to_transfer():
-				#do the transfer in another thread
-				self.worker.requestTransfer(self.model)
-				return
-	
 #---------------------------------------------------------------------------------------------------------
 	#List
 #---------------------------------------------------------------------------------------------------------
@@ -406,14 +360,24 @@ class ProcessManager(PGui.QWidget):
 	#remove selection from the list
 	#if current process in the list, kill it
 	def remove(self):
-		killCurrent,nbFound=self.model.selectionUpdate_remove()
+		nbFound=self.model.selectionUpdate_remove()
 		self.sendsMessage.emit("Removed %i experiment(s)" %nbFound)
-		if killCurrent:
-			self.process.kill()
-			self.sendsMessage.emit("Killed 1 experiment")
-			
-			
 
+
+#---------------------------------------------------------------------------------------------------------
+	#Transfer
+#---------------------------------------------------------------------------------------------------------
+	#Transfer a file if possible 
+	def try_sync(self,exitcode=0):
+		#self.send_list_to_process()
+		#if there is not already a transfer running
+		if self.processSync.state()==PCore.QProcess.Running:
+			return
+		else:
+			self.model.sync_done(exitcode)
+			if self.model.has_exp_to_sync():
+				self.model.sync_one_experiment(self.processSync)
+				return
 
 #---------------------------------------------------------------------------------------------------------
 	#Process Here
@@ -424,31 +388,28 @@ class ProcessManager(PGui.QWidget):
 	def process_here(self):
 		nbFound=self.model.selectionUpdate_process_here()
 		self.sendsMessage.emit("Process Here: found %i experiment(s) to process" %nbFound)
-		if not self.isRunning and nbFound>0:
-			if self.model.get_first_to_process():
-				if not self.run_one():
-					self.isRunning=False
+		if nbFound>0:
+			self.try_process()
 
-	#run klusta on one experiment
-	def run_one(self):
-		if self.model.currentExperiment!=None:
-			self.isRunning=True
-			self.console.separator(self.model.currentExperiment)
-			self.model.currentExperiment.run_klusta(self.process)
-		
-	#when the current process finish, this function is activate
-	#process an other experiment or stop
-	def go_to_next(self,exitcode):
-		#update experiment
-		self.model.currentExperiment_isDone(exitcode)
-		
-		#find another experiment to process
-		if self.model.get_first_to_process():
-			self.run_one()
-		#or stop
+
+	def try_process(self,exitcode=0):
+		#if there is not already a transfer running
+		if self.process.state()==PCore.QProcess.Running:
+			return
 		else:
-			self.process.close()
-			self.isRunning=False
+			self.model.process_done(exitcode)
+			if self.model.has_exp_to_process():
+				self.model.process_one_experiment(self.process)
+				self.console.separator(self.model.experimentList[self.model.indexProcess])
+				return
+
+			
+	def kill(self):
+		if self.model.kill_current():
+			self.process.kill()
+			self.sendsMessage.emit("Kill: killed process" %nbFound)
+		else:
+			self.sendsMessage.emit("Kill: did nothing")
 
 
 #---------------------------------------------------------------------------------------------------------

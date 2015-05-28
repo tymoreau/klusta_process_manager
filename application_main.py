@@ -109,36 +109,33 @@ class MainWindow(PGui.QWidget):
 				type=self.fileBrowser.model.type(item)
 				if type=='Folder':
 					path_folder=self.fileBrowser.model.filePath(item)
-					self.look_for_prm(path_folder,name)
+					#self.look_for_prm(path_folder,name)
+					state=self.processManager.add_experiment(path_folder)
+					if state=="--":
+						state="added"
+					self.sendsMessage.emit("*** "+str(name)+": "+state)
 				else:
 					self.sendsMessage.emit("*** "+str(name)+": not a folder")
-					
-	#look for a prm file and try to add the experiment to processManager
-	def look_for_prm(self,path_folder,name):
-		for filename in os.listdir(path_folder):
-			if filename.endswith('.prm'):
-				state=self.processManager.add_experiment(path_folder)
-				if state=="--":
-					state="added"
-				self.sendsMessage.emit("*** "+str(name)+": "+state)
-				return
-		self.sendsMessage.emit("*** "+str(name)+": do not have a prm file")
+		self.sendsMessage.emit("\n")
+
 #-------------------------------------------------------------------------------------------------------------------
 
-	def closeEvent(self,event):
+	#TO DO
+	#def closeEvent(self,event):
+		
 		#check if is running
-		if self.processManager.isRunning:
-			msgBox = PGui.QMessageBox()
-			msgBox.setText("Closing the app")
-			msgBox.setInformativeText("A process is running, are you sure you want to quit ? The process will be killed")
-			msgBox.setStandardButtons(PGui.QMessageBox.Yes | PGui.QMessageBox.Cancel)
-			msgBox.setDefaultButton(PGui.QMessageBox.Cancel)
-			answer = msgBox.exec_()
-			if answer==PGui.QMessageBox.Cancel:
-				event.ignore()
-				return
-		self.processManager.process.kill()
-		event.accept()
+		#if self.processManager.isRunning:
+			#msgBox = PGui.QMessageBox()
+			#msgBox.setText("Closing the app")
+			#msgBox.setInformativeText("A process is running, are you sure you want to quit ? The process will be killed")
+			#msgBox.setStandardButtons(PGui.QMessageBox.Yes | PGui.QMessageBox.Cancel)
+			#msgBox.setDefaultButton(PGui.QMessageBox.Cancel)
+			#answer = msgBox.exec_()
+			#if answer==PGui.QMessageBox.Cancel:
+				#event.ignore()
+				#return
+		#self.processManager.process.kill()
+		#event.accept()
 
 
 if __name__ == '__main__':

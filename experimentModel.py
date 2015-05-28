@@ -5,7 +5,7 @@ import signal
 import PySide.QtCore as PCore
 import PySide.QtGui as PGui
 
-from experiment import Experiment, ExperimentOnServer
+from experiment import Experiment
 #to do : check remove row/inser row, avoid reset model ?
 
 #------------------------------------------------------------------------------------------------------------------
@@ -14,50 +14,132 @@ from experiment import Experiment, ExperimentOnServer
 class ExperimentModelBase(PCore.QAbstractTableModel):
 	changeChecked=PCore.Signal(object)
 	
-	def __init__(self,NASPath,serverPath=None):
+	def __init__(self,NASPath):
 		super(ExperimentModelBase,self).__init__()
 		
 		self.experimentList=[]
 		self.names=[]
-		self.currentExperiment=None
+		self.indexProcess=None
+		self.indexSync=None
 		self.nbChecked=0
 		self.NASPath=NASPath
-		self.serverPath=serverPath
+		
+	def add_experiment(self,folderPath):
+		if folderPath in self.names:
+			for experiment in self.experimentList:
+				if experiment.path==folderPath:
+					if experiment.remove():    #=if nothing running/waiting and if not on server
+						self.beginResetModel()
+						experiment.refresh_state()
+						self.endResetModel()
+				return experiment.state
+			return 'error in add_experiment'
+		else:
+			experiment=Experiment(folderPath,self.NASPath)
+			row=len(self.experimentList)
+			self.beginInsertRows(PCore.QModelIndex(),row,row)
+			self.experimentList.append(experiment)
+			self.nbChecked+=1
+			self.changeChecked.emit(self.nbChecked)
+			self.endInsertRows()
+			self.names.append(folderPath)
+			return experiment.state
+		
+
+	#-----------------------------------------------------------------------------------------------------
+	# On the whole list
+	#-----------------------------------------------------------------------------------------------------
+	def clear(self):
+		self.beginResetModel()
+		indexToRemove=[]
+		for index,experiment in enumerate(self.experimentList):
+			if experiment.remove():
+				if experiment.isChecked:
+					self.nbChecked-=1
+				indexToRemove.append(index)
+				self.names.remove(experiment.path)
+		self.changeChecked.emit(self.nbChecked)
+		self.experimentList=[exp for index,exp in enumerate(self.experimentList) if index not in indexToRemove]
+		self.endResetModel()
+		return len(indexToRemove)
+	
+
 
 	#-----------------------------------------------------------------------------------------------------
 	# Processing
 	#-----------------------------------------------------------------------------------------------------
-	#look in experimentList for the first experiment ready to be process
-	#return True in one experiment is found (one at least)
-	def get_first_to_process(self):
+	
+	def has_exp_to_process(self):
 		for experiment in self.experimentList:
-			if experiment.toProcess:
-				self.beginResetModel()
-				experiment.toProcess=False
-				experiment.isRunning=True
-				self.currentExperiment=experiment
-				self.endResetModel()
+			if experiment.toProcess and not experiment.toSync:
 				return True
-		self.currentExperiment=None
+		return False
+			
+	def process_one_experiment(self,process):
+		for index,experiment in enumerate(self.experimentList):
+			if experiment.toProcess and not experiment.toSync:
+				self.beginResetModel()
+				experiment.run_klusta(process)
+				self.endResetModel()
+				self.indexProcess=index
+				return True
+		self.indexProcess=None
+		return False
+				
+	def process_done(self,exitcode):
+		if self.indexProcess==None:
+			return
+		self.beginResetModel()
+		self.experimentList[self.indexProcess].is_done(exitcode)
+		self.indexProcess=None
+		self.endResetModel()
+		
+	def kill_current(self):
+		#check if something to kill
+		if self.indexProcess==None:
+			return False
+		#warning message
+		index=self.indexProcess
+		msgBox = PGui.QMessageBox(PGui.QMessageBox.Warning,"Kill process ?","Kill the current process (%s) ?"%self.experimentList[index].name, PGui.QMessageBox.Yes | PGui.QMessageBox.No)
+		msgBox.setDefaultButton(PGui.QMessageBox.No)
+		answer = msgBox.exec_()
+		#if yes, kill process (if it is still the current Experiment)
+		if answer==PGui.QMessageBox.Yes:
+			if self.experimentList[index].isRunning:
+				self.experimentList[index].is_done(exitcode=42)
+				return True
+		return False
+
+
+
+	#-----------------------------------------------------------------------------------------------------
+	# Transfer / Sync
+	#-----------------------------------------------------------------------------------------------------
+	
+	def has_exp_to_sync(self):
+		for experiment in self.experimentList:
+			if experiment.toSync:
+				return True
 		return False
 	
-	def currentExperiment_isDone(self,exitcode):
-		self.beginResetModel()
-		self.currentExperiment.is_done(exitcode)
-		self.endResetModel()
-
-
-	#Transfer
-	def get_first_to_transfer(self):
-		for experiment in self.experimentList:
-			if experiment.toTransfer:
+	def sync_one_experiment(self,process):
+		for index,experiment in enumerate(self.experimentList):
+			if experiment.toSync:
 				self.beginResetModel()
-				experiment.state="being transfered "+experiment.state_transfer()
-				self.currentExperimentTransfer=experiment
+				experiment.rsync(process)
 				self.endResetModel()
+				self.indexSync=index
 				return True
-		self.currentExperimentTransfer=None
+		self.indexSync=None
 		return False
+
+	def sync_done(self,exitcode):
+		if self.indexSync==None:
+			return
+		self.beginResetModel()
+		self.experimentList[self.indexSync].sync_done(exitcode)
+		self.indexSync=None
+		self.endResetModel()
 
 
 	#----------------------------------------------------------------------------------------
@@ -74,6 +156,7 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 		col=index.column()
 		if role==PCore.Qt.DisplayRole:
 			if col==0:
+				#print self.experimentList[row].name, self.experimentList[row].state             #display name,state to debug
 				return str( self.experimentList[row].name )
 			if col==1:
 				return str( self.experimentList[row].state )
@@ -118,53 +201,11 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 				elif section==1:
 					return str("State")
 
-#------------------------------------------------------------------------------------------------------------------
-#       ExperimentModelServer (list of ExperimentOnServer)
-#------------------------------------------------------------------------------------------------------------------
-class ExperimentModelServer(ExperimentModelBase):
-	
-	# add an experiment if not already in model
-	def add_experiment(self,nameLocal):
-		nameLocal=str(nameLocal)
-		if nameLocal in self.names:
-			for experiment in self.experimentList:
-				if experiment.nameLocal==nameLocal:
-					if experiment.serverFinished:
-						self.beginResetModel()
-						experiment.reset(self.serverPath,self.NASPath)
-						self.endResetModel()
-					return experiment.state
-					
-			return "error on server add_experiment"
-		else:
-			experiment=ExperimentOnServer(nameLocal,self.serverPath,self.NASPath)
-			self.beginResetModel()
-			row=len(self.experimentList)
-			self.beginInsertRows(PCore.QModelIndex(),row,row)
-			self.experimentList.append(experiment)
-			self.endInsertRows()
-			self.names.append(str(nameLocal))
-			self.endResetModel()
-			return experiment.state
-		
-	def clear(self):
-		self.beginResetModel()
-		indexToRemove=[]
-		for index,experiment in enumerate(self.experimentList):
-			if experiment.serverFinished:
-				if experiment.nameLocal in self.names:
-					self.names.remove(experiment.nameLocal)
-				if experiment.isChecked:
-					self.nbChecked-=1
-				indexToRemove.append(index)
-		self.changeChecked.emit(self.nbChecked)
-		self.experimentList=[exp for index,exp in enumerate(self.experimentList) if index not in indexToRemove]
-		self.endResetModel()
-		return len(indexToRemove)
-		
+
+
 
 #------------------------------------------------------------------------------------------------------------------
-#       ExperimentModel (list of Experiment)
+#       ExperimentModel (list of Experiment) on local computer, possible to communicate with server
 #------------------------------------------------------------------------------------------------------------------
 # Model to use with QTableView
 # Checkbox in the first column (next to the text)
@@ -172,24 +213,6 @@ class ExperimentModelServer(ExperimentModelBase):
 # Default : everything is checked
 
 class ExperimentModel(ExperimentModelBase):
-
-	# add an experiment if not already in model
-	def add_experiment(self,folderPath):
-		self.beginResetModel()
-		if folderPath in self.names:
-			return "already in list"
-		else:
-			experiment=Experiment(folderPath,self.NASPath)
-			if experiment.isOK:
-				row=len(self.experimentList)
-				self.beginInsertRows(PCore.QModelIndex(),row,row)
-				self.experimentList.append(experiment)
-				self.nbChecked+=1
-				self.changeChecked.emit(self.nbChecked)
-				self.endInsertRows()
-				self.names.append(folderPath)
-				self.endResetModel()
-			return experiment.state
 
 	#-----------------------------------------------------------------------------------------------------
 	# Server
@@ -210,18 +233,13 @@ class ExperimentModel(ExperimentModelBase):
 			name=expDone[i]
 			doneOnServer=expDone[i+1]
 			for experiment in self.experimentList:
-				if experiment.folder.dirName()==name:
+				if experiment.name==name:
 					experiment.onServer=False
 					if doneOnServer=="True":
-						if experiment.check_remote_folder_done(experiment.NASfolder):
-							experiment.isBackup=True
-							experiment.state="results waiting to be transfered (NAS->local)"
-							experiment.toTransfer=True
-							experiment.localToNAS=False
-						else:
-							experiment.state="server finished job, but no kwik file on NAS"
-					else:
-						experiment.isBackup=False
+						experiment.toSync=True
+						experiment.localToNAS=False
+						experiment.state="results waiting to be sync (NAS->local)"
+						experiment.isDone=True
 			i+=2
 		self.endResetModel()
 		
@@ -233,7 +251,7 @@ class ExperimentModel(ExperimentModelBase):
 			name=stateList[i]
 			state=stateList[i+1]
 			for experiment in self.experimentList:
-				if experiment.folder.dirName()==name:
+				if experiment.name==name:
 					experiment.state=state
 			i+=2
 		self.endResetModel()
@@ -259,23 +277,6 @@ class ExperimentModel(ExperimentModelBase):
 		self.changeChecked.emit(self.nbChecked)
 		self.endResetModel()
 		
-	#Clear the list : keep only experiment being/waiting to be process
-	#return number of experiment removed
-	def clear(self):
-		self.beginResetModel()
-		indexToRemove=[]
-		for index,experiment in enumerate(self.experimentList):
-			if not experiment.toProcess and not experiment.isRunning:
-				if experiment.folder.path() in self.names:
-					self.names.remove(experiment.folder.path())
-				if experiment.isChecked:
-					self.nbChecked-=1
-				indexToRemove.append(index)
-		self.changeChecked.emit(self.nbChecked)
-		self.experimentList=[exp for index,exp in enumerate(self.experimentList) if index not in indexToRemove]
-		self.endResetModel()
-		return len(indexToRemove)
-	
 	#-----------------------------------------------------------------------------------------------------
 	# On the selection (isChecked==True)
 	#-----------------------------------------------------------------------------------------------------
@@ -284,13 +285,8 @@ class ExperimentModel(ExperimentModelBase):
 		self.beginResetModel()
 		nbFound=0
 		for experiment in self.experimentList:
-			if experiment.isChecked and (not experiment.isRunning) and (not experiment.onServer) and (not experiment.isDone):
-				if experiment.check_if_done():
-					self.isDone=True
-					self.state="Already done (found a kwik file)"
-				elif experiment.check_files_exist():
-					experiment.state="waiting to be process"
-					experiment.toProcess=True
+			if experiment.isChecked:
+				if experiment.can_be_process_here():
 					nbFound+=1
 		self.endResetModel()
 		return nbFound
@@ -300,33 +296,9 @@ class ExperimentModel(ExperimentModelBase):
 		self.beginResetModel()
 		nbFound=0
 		for experiment in self.experimentList:
-			if experiment.isChecked and (not experiment.isRunning) and (not experiment.onServer) and (not experiment.isDone):
-				if experiment.check_if_done():
-					experiment.isDone=True
-					experiment.state="Already done (found a kwik file)"
-				elif experiment.check_remote_folder_done(experiment.NASfolder):
-					experiment.isDone=True
-					experiment.state="Already done (found a kwik file on NAS)"
-					if experiment.check_remote_folder_raw(experiment.NASfolder):
-						experiment.isBackup=True
-						experiment.rawOnNAS=True
-						experiment.state="Already done and backup"
-					else:
-						experiment.state="Weird: kwik file on NAS but no raw data"
-				else:
-					if experiment.check_remote_folder_raw(experiment.NASfolder):
-						experiment.state="sending request to server"
-						experiment.toSend=True
-						experiment.onServer=True
-						experiment.rawOnNAS=True
-						nbFound+=1
-					else:
-						experiment.rawOnNAS=False
-						experiment.state="waiting to be transfered (local->NAS)"
-						experiment.toTransfer=True
-						experiment.localToNAS=True
-						experiment.onServer=True
-						nbFound+=1
+			if experiment.isChecked:
+				if experiment.can_be_process_server():
+					nbFound+=1
 		self.endResetModel()
 		return nbFound
 		
@@ -335,14 +307,9 @@ class ExperimentModel(ExperimentModelBase):
 		self.beginResetModel()
 		nbFound=0
 		for experiment in self.experimentList:
-			if experiment.isChecked and experiment.toProcess and (not experiment.onServer):
-				experiment.state="-- (cancel)"
-				experiment.toProcess=False
-				nbFound+=1
-			if experiment.isChecked and experiment.toTransfer and (not experiment.onServer):
-				experiment.state="-- (cancel)"
-				experiment.toTransfer=False
-				nbFound+=1
+			if experiment.isChecked:
+				if experiment.cancel():
+					nbFound+=1
 		self.endResetModel()
 		return nbFound
 
@@ -350,26 +317,13 @@ class ExperimentModel(ExperimentModelBase):
 	def selectionUpdate_remove(self):
 		self.beginResetModel()
 		indexToRemove=[]
-		killCurrent=False
 		for index,experiment in enumerate(self.experimentList):
 			if experiment.isChecked:
-				if experiment.isRunning:
-					#warning message
-					msgBox = PGui.QMessageBox(PGui.QMessageBox.Warning,"Remove/Kill on selection","Kill the current process ("+experiment.name+") ?", PGui.QMessageBox.Yes | PGui.QMessageBox.No)
-					msgBox.setDefaultButton(PGui.QMessageBox.No)
-					answer = msgBox.exec_()
-					#if yes, kill process (if it is still the current Experiment)
-					if answer==PGui.QMessageBox.Yes and experiment.isRunning:
-						killCurrent=True
-						experiment.isRunning=False
-						experiment.toProcess=False
-						experiment.crashed=True
-				elif not experiment.onServer:
-					#remove experiment
-					self.names.remove(experiment.folder.path())
+				if experiment.remove():
+					self.names.remove(experiment.path)
 					indexToRemove.append(index)
 					self.nbChecked-=1
 		self.changeChecked.emit(self.nbChecked)
 		self.experimentList=[exp for index,exp in enumerate(self.experimentList) if index not in indexToRemove]
 		self.endResetModel()
-		return killCurrent,len(indexToRemove)
+		return len(indexToRemove)
