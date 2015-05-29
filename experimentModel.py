@@ -9,7 +9,7 @@ from experiment import Experiment
 #to do : check remove row/inser row, avoid reset model ?
 
 #------------------------------------------------------------------------------------------------------------------
-#       ExperimentModelBase: visualize experiment object
+#       ExperimentModelBase: use on server
 #------------------------------------------------------------------------------------------------------------------
 class ExperimentModelBase(PCore.QAbstractTableModel):
 	changeChecked=PCore.Signal(object)
@@ -24,18 +24,20 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 		self.nbChecked=0
 		self.NASPath=NASPath
 		
-	def add_experiment(self,folderPath):
+	def add_experiment(self,folderPath,NASFolderPath=None):
 		if folderPath in self.names:
 			for experiment in self.experimentList:
 				if experiment.path==folderPath:
 					if experiment.can_be_remove():    #=if nothing running/waiting and if not on server
 						self.beginResetModel()
 						experiment.refresh_state()
+						experiment.try_process_on_server()
 						self.endResetModel()
-				return experiment.state
+					return experiment.state
 			return 'error in add_experiment'
 		else:
-			experiment=Experiment(folderPath,self.NASPath)
+			experiment=Experiment(folderPath,self.NASPath,NASFolderPath)
+			experiment.try_process_on_server()
 			row=len(self.experimentList)
 			self.beginInsertRows(PCore.QModelIndex(),row,row)
 			self.experimentList.append(experiment)
@@ -212,6 +214,28 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 # Default : everything is checked
 
 class ExperimentModel(ExperimentModelBase):
+	def add_experiment(self,folderPath,NASFolderPath=None):
+		if folderPath in self.names:
+			for experiment in self.experimentList:
+				if experiment.path==folderPath:
+					print experiment.can_be_remove()
+					if experiment.can_be_remove():    #=if nothing running/waiting and if not on server
+						self.beginResetModel()
+						experiment.refresh_state()
+						self.endResetModel()
+					return experiment.state
+			return 'error in add_experiment'
+		else:
+			experiment=Experiment(folderPath,self.NASPath,NASFolderPath)
+			row=len(self.experimentList)
+			self.beginInsertRows(PCore.QModelIndex(),row,row)
+			self.experimentList.append(experiment)
+			self.nbChecked+=1
+			self.changeChecked.emit(self.nbChecked)
+			self.endInsertRows()
+			self.names.append(folderPath)
+			return experiment.state
+
 
 	#-----------------------------------------------------------------------------------------------------
 	# Server

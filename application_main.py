@@ -111,8 +111,6 @@ class MainWindow(PGui.QWidget):
 					path_folder=self.fileBrowser.model.filePath(item)
 					#self.look_for_prm(path_folder,name)
 					state=self.processManager.add_experiment(path_folder)
-					if state=="--":
-						state="added"
 					self.sendsMessage.emit("*** "+str(name)+": "+state)
 				else:
 					self.sendsMessage.emit("*** "+str(name)+": not a folder")

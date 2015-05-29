@@ -141,7 +141,7 @@ class KlustaFolder(PCore.QDir):
 #----------------------------------------------------------------------------------------------------------
 class Experiment(PCore.QObject):
 	
-	def __init__(self,folderPath,NASroot):
+	def __init__(self,folderPath,NASroot,NASFolderPath=None):
 		#self.isOK=False
 		self.state="error in experiment.py"
 		self.name=folderPath
@@ -169,10 +169,10 @@ class Experiment(PCore.QObject):
 		self.localToNAS=True
 		self.toSend=False #send it's name to the server (once everything is back up on nas)
 		
-		self._set(folderPath,NASroot)
+		self._set(folderPath,NASroot,NASFolderPath)
 		
 		
-	def _set(self,folderPath,NASroot):
+	def _set(self,folderPath,NASroot,NASFolderPath):
 		#folder on local computer
 		self.folder=KlustaFolder(folderPath)
 		if not self.folder.exists():
@@ -182,14 +182,22 @@ class Experiment(PCore.QObject):
 		self.name=self.folder.name
 		
 		#folder on NAS
+		if NASFolderPath!=None:
+			self.NASFolderPath=NASroot+NASFolderPath
+			self.NASFolder=KlustaFolder(NASroot+NASFolderPath)
+			if self.NASFolder.exists():
+				self.refresh_state()
+				return
+		
 		self.NASFolderPath=None
 		if self.look_for_NAS_subfolder():
 			self.NASFolder=KlustaFolder(self.NASFolderPath)
+			self.refresh_state()
 		else:
 			self.finish=True
 			return
 		
-		self.refresh_state()
+		
 		
 	def refresh_state(self):
 		self.toProcess=False
@@ -223,14 +231,38 @@ class Experiment(PCore.QObject):
 		if self.NASFolder.has_kwik():
 			self.state="done (kwik file on NAS)"
 			self.isDone=True
+			self.finish=True
 		elif self.folder.has_kwik():
-			self.state="done (kwik file) - not backup"
+			self.state="done (kwik file) - waiting to be sync"
 			self.isDone=True
+			self.toSync=True
+			self.localToNAS=True
 		else:
 			#no kwik file, check for prm,prb,rawData
 			if self.folder.can_be_process():
 				self.arguments=[self.folder.prm.fileName()]
 			self.state=self.folder.state
+			
+			
+	
+	#For experiment on server
+	#---------------------------------------------------------------------------------------------
+	def try_process_on_server(self):
+		if self.finish or self.isDone:
+			return
+		if self.folder.can_be_process():
+			self.toProcess=True
+			self.arguments=[self.folder.prm.fileName()]
+			self.state="waiting to be processed"
+		elif self.NASFolder.can_be_process():
+			self.toSync=True
+			self.toProcess=True
+			self.localToNAS=False
+			self.state="waiting to be sync"
+		else:
+			self.finish=True
+			self.state=self.NASFolder.state
+
 
 
 
@@ -296,6 +328,7 @@ class Experiment(PCore.QObject):
 	#---------------------------------------------------------------------------------------------
 	# For experiment "animalID_date" look for subfolder animalID in the NAS
 	# if found, look inside for subfolder animalID_date
+	# do not look for NAS/animalID_date, should ?
 	def look_for_NAS_subfolder(self):
 		NAS=PCore.QDir(self.NASroot)
 		if NAS.exists():
@@ -397,6 +430,7 @@ class Experiment(PCore.QObject):
 			self.state+="(fail,exitcode=%i)"%exitcode
 		else:
 			self.state+="(done)"
+		self.folder.refresh()
 		
 
 
@@ -409,6 +443,7 @@ class Experiment(PCore.QObject):
 			return False
 		self.toProcess=False
 		if self.folder.can_be_process():
+			self.arguments=[self.folder.prm.fileName()]
 			self.state="try to launch klusta"
 			process.setWorkingDirectory(self.folder.absolutePath())
 			process.start(self.program,self.arguments)
@@ -428,6 +463,7 @@ class Experiment(PCore.QObject):
 	def is_done(self,exitcode):
 		if self.onServer or self.isDone:
 			return
+		self.folder.refresh()
 		self.isRunning=False
 		if exitcode==42:
 			self.state="Killed by user"
@@ -452,6 +488,7 @@ class Experiment(PCore.QObject):
 				self.folder.rename(fileName,name+"/"+fileName)
 			self.finish=True
 			self.toSync=False
+			self.folder.refresh()
 	
 
 

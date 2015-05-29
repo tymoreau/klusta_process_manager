@@ -51,8 +51,9 @@ class Client(PCore.QObject):
 		self.connected=True
 		
 		#model
-		self.model=ExperimentModelServer(NAS_PATH,SERVER_PATH)
+		self.model=ExperimentModelBase(NAS_PATH)
 		self.stateList=[]
+		self.expDone=[]
 		
 		#table View
 		self.tableView=PGui.QTableView()
@@ -124,7 +125,7 @@ class Client(PCore.QObject):
 			self.server.mkdir(name)   #will not erase if already there
 			path=self.server.filePath(name)
 			#add exp
-			self.model.add_experiment(path,NASpath)
+			self.model.add_experiment(folderPath=path,NASFolderPath=NASpath)
 		#send change to client, signal server
 		self.update_state_list()
 		self.hasNewExperiment.emit()
@@ -135,24 +136,27 @@ class Client(PCore.QObject):
 	# Send state list
 	#-------------------------------------------------------------------------------------
 	def update_state_list(self):
-		expDone=[]
 		for experiment in self.model.experimentList:
-			self.stateList+=[experiment.nameLocal,experiment.state]
+			self.stateList+=[experiment.name,experiment.state]
 			if experiment.finish:
 				if experiment.toSync or experiment.isSyncing:
 					continue
 				elif experiment.isDone:
-					expDone+=[experiment.name,"True"]
+					self.expDone+=[experiment.name,"True"]
 				else:
-					expDone+=[experiment.name,"False"]
-		self.send_update_state()
-		if len(expDone)>0:
-			self.send_exp_done(expDone)
+					self.expDone+=[experiment.name,"False"]
+		if self.connected:
+			self.send_update_state()
+			if len(self.expDone)>0:
+				self.send_exp_done()
 			
-	def send_exp_done(self,expDone):
-		block=self.send_protocol("expDone",List=expDone)
+	def send_exp_done(self):
+		print "exp done:",self.expDone
+		block=self.send_protocol("expDone",List=self.expDone)
 		if block!=0:
 			self.tcpSocket.write(block)
+			self.expDone=[]
+			#self.model.clear()  problem=change index
 
 	def send_update_state(self):
 		print "send",self.stateList
@@ -278,7 +282,7 @@ class ProcessView(PGui.QWidget):
 		#Transfer
 		self.processSync=PCore.QProcess()
 		self.processSync.finished.connect(self.try_sync)
-		
+		self.currentClientSync=None
 		
 		#dealing with the klusta environment
 		env = PCore.QProcess.systemEnvironment()
@@ -338,7 +342,9 @@ class ProcessView(PGui.QWidget):
 			self.process.kill()
 			self.wasKill=True
 			self.process.waitForFinished(1)
-		self.thread.exit(1)
+		if not self.processSync.waitForFinished(1):
+			self.processSync.kill()
+			self.processSync.waitForFinished(1)
 		for ip,client in self.clientDict.items():
 			if client.tcpSocket.isValid():
 				client.tcpSocket.flush()
@@ -363,11 +369,13 @@ class ProcessView(PGui.QWidget):
 			if self.wasKill:
 				self.wasKill=False
 				exitcode=42
-			self.clientDict[self.currentClient].model.process_done(exitcode)
+			if self.currentClient!=None:
+				self.clientDict[self.currentClient].model.process_done(exitcode)
+				self.clientDict[self.currentClient].update_state_list()
 			#find new client if possible
 			if self.search_client_toProcess():
 				self.clientDict[self.currentClient].model.process_one_experiment(self.process)
-				self.console.separator(self.clientDict[self.currentClient].model.experimentList[self.model.indexProcess])
+				self.console.separator(self.clientDict[self.currentClient].model.experimentList[self.clientDict[self.currentClient].model.indexProcess])
 				self.clientDict[self.currentClient].update_state_list()
 				return
 
@@ -390,16 +398,18 @@ class ProcessView(PGui.QWidget):
 	#Transfer
 	#-------------------------------------------------------------------------------------------
 
-	def try_sync(self):
+	def try_sync(self,exitcode=None):
 		#if there is not already a transfer running
 		if self.processSync.state()==PCore.QProcess.Running:
 			return
 		else:
-			self.clientDict[self.currentClient].sync_done(exitcode)
+			if self.currentClientSync!=None:
+				self.clientDict[self.currentClientSync].model.sync_done(exitcode)
+				self.clientDict[self.currentClientSync].update_state_list()
 			if self.search_client_toSync():
-				if self.model.has_exp_to_sync():
-					self.clientDict[self.currentClient].model.sync_one_experiment(self.processSync)
-					self.clientDict[self.currentClient].update_state_list()
+				if self.clientDict[self.currentClientSync].model.has_exp_to_sync():
+					self.clientDict[self.currentClientSync].model.sync_one_experiment(self.processSync)
+					self.clientDict[self.currentClientSync].update_state_list()
 					return
 			
 			
@@ -407,15 +417,15 @@ class ProcessView(PGui.QWidget):
 		same=False
 		for ip,client in self.clientDict.items():
 			if client.model.has_exp_to_sync():
-				if ip==self.currentClient:
+				if ip==self.currentClientSync:
 					same=True
 				else:
-					self.currentClient=ip
+					self.currentClientSync=ip
 					return True
 		if same:
 			return True
 		else:
-			self.currentClient=None
+			self.currentClientSync=None
 			return False
 
 #-------------------------------------------------------------------------------------------------------------------

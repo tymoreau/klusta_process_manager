@@ -286,7 +286,7 @@ class ProcessManager(PGui.QWidget):
 		if instruction=="processList" and len(List)!=0:
 			out.writeQStringList(List)
 		else:
-			print "send_protocol : instruction not known"
+			print("send_protocol : instruction not known")
 			return 0
 		out.device().seek(0)
 		out.writeUInt16(block.size()-2)
@@ -304,13 +304,13 @@ class ProcessManager(PGui.QWidget):
 		while self.tcpSocket.bytesAvailable():
 			#read size of block
 			if self.tcpSocket.bytesAvailable() < 2:
-				print "client: bytes inf 2"
+				print("client: bytes inf 2")
 				return 0
 			self.blockSize = self.dataStream.readUInt16()
 
 			#check if all data is available
 			if self.tcpSocket.bytesAvailable() < self.blockSize:
-				print "client :bytes inf block size"
+				print("client :bytes inf block size")
 				return 0
 			
 			#read instruction
@@ -321,10 +321,11 @@ class ProcessManager(PGui.QWidget):
 				
 			elif instruction=="expDone":
 				expDone=self.dataStream.readQStringList()
+				print("receive expDone",expDone)
 				self.model.server_finished(expDone)
 				self.try_sync()
 			else:
-				print "received unknown instruction:",instruction
+				print("received unknown instruction:",instruction)
 			
 
 #---------------------------------------------------------------------------------------------------------
@@ -333,7 +334,9 @@ class ProcessManager(PGui.QWidget):
 		
 	#Return false if experiment already in list
 	def add_experiment(self,folderPath):
-		return self.model.add_experiment(folderPath)
+		state=self.model.add_experiment(folderPath)
+		self.try_sync()
+		return state
 
 	def clear_list(self):
 		nbRemove=self.model.clear()
