@@ -11,13 +11,13 @@ import os
 import signal
  
 # Import the core and GUI elements of Qt
-import PySide.QtCore as PCore
-import PySide.QtGui as PGui
+import PyQt4.QtCore as PCore
+import PyQt4.QtGui as PGui
 
 #Import views
 from processManager import ProcessManager
 from fileBrowser import FileBrowser
-from experimentModel import ExperimentModel, Experiment
+
 
 #Property of the window
 WIDTH=1200
@@ -45,7 +45,7 @@ class LogView(PGui.QGroupBox):
 
 
 class MainWindow(PGui.QWidget):
-	sendsMessage=PCore.Signal(object)
+	sendsMessage=PCore.pyqtSignal(object)
 	
 	def __init__(self):
 		super(MainWindow,self).__init__()

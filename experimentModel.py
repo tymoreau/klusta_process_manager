@@ -2,8 +2,8 @@ import sys
 import os 
 import signal
 
-import PySide.QtCore as PCore
-import PySide.QtGui as PGui
+import PyQt4.QtCore as PCore
+import PyQt4.QtGui as PGui
 
 from experiment import Experiment
 #to do : check remove row/inser row, avoid reset model ?
@@ -12,7 +12,7 @@ from experiment import Experiment
 #       ExperimentModelBase: use on server
 #------------------------------------------------------------------------------------------------------------------
 class ExperimentModelBase(PCore.QAbstractTableModel):
-	changeChecked=PCore.Signal(object)
+	changeChecked=PCore.pyqtSignal(object)
 	
 	def __init__(self,NASPath):
 		super(ExperimentModelBase,self).__init__()
@@ -157,7 +157,7 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 		col=index.column()
 		if role==PCore.Qt.DisplayRole:
 			if col==0:
-				print self.experimentList[row].name, self.experimentList[row].state          #display name,state to debug
+				print(self.experimentList[row].name, self.experimentList[row].state)        #display name,state to debug
 				return str( self.experimentList[row].name )
 			if col==1:
 				return str( self.experimentList[row].state )
@@ -218,7 +218,6 @@ class ExperimentModel(ExperimentModelBase):
 		if folderPath in self.names:
 			for experiment in self.experimentList:
 				if experiment.path==folderPath:
-					print experiment.can_be_remove()
 					if experiment.can_be_remove():    #=if nothing running/waiting and if not on server
 						self.beginResetModel()
 						experiment.refresh_state()

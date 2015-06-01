@@ -1,8 +1,8 @@
 #Process Manager
 
-import PySide.QtCore as PCore
-import PySide.QtGui as PGui
-import PySide.QtNetwork as PNet
+import PyQt4.QtCore as PCore
+import PyQt4.QtGui as PGui
+import PyQt4.QtNetwork as PNet
 
 import sys
 import signal
@@ -63,7 +63,7 @@ class ConsoleView(PGui.QWidget):
 # Process Manager
 #---------------------------------------------------------------------------------------------------------
 class ProcessManager(PGui.QWidget):
-	sendsMessage=PCore.Signal(object)
+	sendsMessage=PCore.pyqtSignal(object)
 
 	def __init__(self,NASPath):
 		super(ProcessManager,self).__init__()
@@ -111,7 +111,7 @@ class ProcessManager(PGui.QWidget):
 			newitem=item.replace('/anaconda/bin:','/anaconda/envs/klusta/bin:')
 			env.remove(item)
 			env.append(newitem)
-		env.append(unicode("CONDA_DEFAULT_ENV=klusta"))
+		env.append("CONDA_DEFAULT_ENV=klusta")
 		self.process.setEnvironment(env)
 		
 		#Layout

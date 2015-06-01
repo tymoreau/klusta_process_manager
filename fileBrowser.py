@@ -1,11 +1,12 @@
-import PySide.QtCore as PCore
-import PySide.QtGui as PGui
+import PyQt4.QtCore as PCore
+import PyQt4.QtGui as PGui
+
 import sys
 import signal
 import os
 
 class FileBrowser(PGui.QGroupBox):
-	sendsMessage=PCore.Signal(object)
+	sendsMessage=PCore.pyqtSignal(object)
 	
 	def __init__(self,root):
 		super(FileBrowser,self).__init__()

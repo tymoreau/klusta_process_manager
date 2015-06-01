@@ -3,7 +3,10 @@ import os
 import signal
 import time
  
-import PySide.QtCore as PCore
+import PyQt4.QtCore as PCore
+
+PCore.Signal=PCore.pyqtSignal
+PCore.Slot=PCore.pyqtSlot
 
 #PROGRAM="klusta"
 PROGRAM="/home/david/anaconda/envs/klusta/bin/klusta"

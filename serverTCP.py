@@ -10,9 +10,11 @@ import os
 import time
 
 # Import Qt
-import PySide.QtCore as PCore
-import PySide.QtGui as PGui
-import PySide.QtNetwork as PNet
+import PyQt4.QtCore as PCore
+import PyQt4.QtGui as PGui
+import PyQt4.QtNetwork as PNet
+
+
 
 #from experiment import ExperimentOnServer
 from experimentModel import ExperimentModelBase
@@ -28,7 +30,7 @@ SEPARATOR='---'*15
 #  CLIENT: tcpSocket to communicate with the tcpSocket of ProcessManager.py  ---- + other data on client
 #-------------------------------------------------------------------------------------------------------------------
 class Client(PCore.QObject):
-	hasNewExperiment=PCore.Signal()
+	hasNewExperiment=PCore.pyqtSignal()
 	
 	def __init__(self,socket):
 		super(Client,self).__init__()
@@ -151,7 +153,7 @@ class Client(PCore.QObject):
 				self.send_exp_done()
 			
 	def send_exp_done(self):
-		print "exp done:",self.expDone
+		print("exp done:",self.expDone)
 		block=self.send_protocol("expDone",List=self.expDone)
 		if block!=0:
 			self.tcpSocket.write(block)
@@ -159,7 +161,7 @@ class Client(PCore.QObject):
 			#self.model.clear()  problem=change index
 
 	def send_update_state(self):
-		print "send",self.stateList
+		print("send",self.stateList)
 		block=self.send_protocol("updateState",List=self.stateList)
 		if block!=0:
 			self.tcpSocket.write(block)
@@ -174,7 +176,7 @@ class Client(PCore.QObject):
 		if instruction=="updateState" or instruction=="expDone":
 			out.writeQStringList(List)
 		else:
-			print "send_protocol : instruction not known"
+			print("send_protocol : instruction not known")
 			return 0
 		out.device().seek(0)
 		out.writeUInt16(block.size()-2)
@@ -291,6 +293,7 @@ class ProcessView(PGui.QWidget):
 			newitem=item.replace('/anaconda/bin:','/anaconda/envs/klusta/bin:')
 			env.remove(item)
 			env.append(newitem)
+		env.append("CONDA_DEFAULT_ENV=klusta")
 		self.process.setEnvironment(env)
 		
 		#buttons and label
@@ -321,12 +324,12 @@ class ProcessView(PGui.QWidget):
 			if ip in self.clientDict.keys():
 				#client is already known
 				self.clientDict[ip].update_socket(newTcpSocket)
-				print "Client",ip,"is back"
+				print("Client",ip,"is back")
 				
 			else:
 				#new client
 				self.clientDict[ip]=Client(newTcpSocket)
-				print "New Client:",ip
+				print("New Client:",ip)
 				self.vboxClient.addWidget(self.clientDict[ip].frame)
 				self.clientDict[ip].hasNewExperiment.connect(self.try_process)
 				self.clientDict[ip].hasNewExperiment.connect(self.try_sync)
@@ -484,10 +487,9 @@ class MainWindow(PGui.QWidget):
 				PGui.QMessageBox.critical(self,"Server","Unable to start server. Maybe it's already running")
 				self.close()
 				return
-			print "Server listen for new connections"
 		else:
 			self.processView.server.close()
-			print "Server close: not accepting new clients"
+
 			
 	def closeEvent(self,event):
 		#check if is running
@@ -528,4 +530,3 @@ if __name__=='__main__':
 		win.show()
 
 		sys.exit(app.exec_())
-
