@@ -1,13 +1,5 @@
-#! /home/david/anaconda/bin/python
-#-------------------------------------------------------------------------------------------------------------------
-#Path to the NAS (mounted on computer)
-NAS_PATH="./test/fakeNAS"
-#Path to your data folder
-ROOT='./test/dataLocal'
-#-------------------------------------------------------------------------------------------------------------------
 
 import sys
-import os 
 import signal
  
 # Import the core and GUI elements of Qt
@@ -18,6 +10,8 @@ import PyQt4.QtGui as PGui
 from processManager import ProcessManager
 from fileBrowser import FileBrowser
 
+#import parameter
+from parameter import *
 
 #Property of the window
 WIDTH=1200
@@ -27,10 +21,11 @@ MIN_HEIGHT=int(HEIGHT*0.75)
 TITLE="FileBrowser + Process Manager"
 
 
+# Receive message an print them 
 class LogView(PGui.QGroupBox):
 	
-	def __init__(self):
-		super(LogView,self).__init__()
+	def __init__(self,parent=None):
+		super(LogView,self).__init__(parent)
 		
 		self.setTitle("Log")
 		self.view=PGui.QTextEdit()
@@ -44,6 +39,7 @@ class LogView(PGui.QGroupBox):
 		self.view.append(message)
 
 
+
 class MainWindow(PGui.QWidget):
 	sendsMessage=PCore.pyqtSignal(object)
 	
@@ -53,7 +49,7 @@ class MainWindow(PGui.QWidget):
 		#Views
 		self.fileBrowser=FileBrowser(ROOT)
 		self.processManager=ProcessManager(NAS_PATH)
-		self.logView=LogView()
+		self.logView=LogView(self)
 
 		#Connect views
 		self.fileBrowser.button_add.clicked.connect(self.add_to_process_manager)
@@ -99,7 +95,8 @@ class MainWindow(PGui.QWidget):
 
 
 #-------------------------------------------------------------------------------------------------------------------
-	#for each item selected in the treeview, check if it's a folder name
+	#Button_add (green arrow)
+	#for each item selected in the treeview, check if it's a folder and add it to the processManager
 	def add_to_process_manager(self):
 		selection=sorted(self.fileBrowser.tree.selectedIndexes())
 		self.sendsMessage.emit("\n******** add to list ")
@@ -109,7 +106,6 @@ class MainWindow(PGui.QWidget):
 				type=self.fileBrowser.model.type(item)
 				if type=='Folder':
 					path_folder=self.fileBrowser.model.filePath(item)
-					#self.look_for_prm(path_folder,name)
 					state=self.processManager.add_experiment(path_folder)
 					self.sendsMessage.emit("*** "+str(name)+": "+state)
 				else:
@@ -118,8 +114,10 @@ class MainWindow(PGui.QWidget):
 
 #-------------------------------------------------------------------------------------------------------------------
 
-	#TO DO
-	#def closeEvent(self,event):
+
+	def closeEvent(self,event):
+		self.processManager.close()
+		self.close()
 		
 		#check if is running
 		#if self.processManager.isRunning:

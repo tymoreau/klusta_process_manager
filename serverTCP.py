@@ -1,33 +1,21 @@
-NAS_PATH="./test/fakeNAS"
-SERVER_PATH="./test/dataServer"
-PROGRAM="/home/david/anaconda/envs/klusta/bin/klusta"  #experiment.py !
-#-------------------------------------------------------------------------------------------------------------------
 
 import signal
 import sys
 import socket
-import os
-import time
 
-# Import Qt
+#QT
 import PyQt4.QtCore as PCore
 import PyQt4.QtGui as PGui
 import PyQt4.QtNetwork as PNet
 
-
-
-#from experiment import ExperimentOnServer
 from experimentModel import ExperimentModelBase
 
-#Listen on
-IP="127.0.0.1"
-PORT=8000
-
-SEPARATOR='---'*15
-
+#parameters
+from parameter import SERVER_PATH, NAS_PATH, PROGRAM, PORT, SEPARATOR
+from parameter import IP_server as IP
 
 #-------------------------------------------------------------------------------------------------------------------
-#  CLIENT: tcpSocket to communicate with the tcpSocket of ProcessManager.py  ---- + other data on client
+#  CLIENT: tcpSocket to communicate with the tcpSocket of ProcessManager.py
 #-------------------------------------------------------------------------------------------------------------------
 class Client(PCore.QObject):
 	hasNewExperiment=PCore.pyqtSignal()
@@ -110,7 +98,8 @@ class Client(PCore.QObject):
 				print("client %s: bytes inf block size"%self.ip)
 				return False
 			#read instruction
-			instruction=self.dataStream.readQString()
+			instr=self.dataStream.readString()
+			instruction=str(instr,encoding='ascii')
 			if instruction=="processList":
 				self.instruction_process_list()
 			else:
@@ -120,6 +109,7 @@ class Client(PCore.QObject):
 	def instruction_process_list(self):
 		#read list
 		NASpathList=self.dataStream.readQStringList()
+		print("receive",NASpathList)
 		#add experiment if they are ok
 		for NASpath in NASpathList:
 			#extract name and create folder
@@ -131,8 +121,7 @@ class Client(PCore.QObject):
 		#send change to client, signal server
 		self.update_state_list()
 		self.hasNewExperiment.emit()
-		
-	
+
 
 	#-------------------------------------------------------------------------------------
 	# Send state list
@@ -147,7 +136,7 @@ class Client(PCore.QObject):
 					self.expDone+=[experiment.name,"True"]
 				else:
 					self.expDone+=[experiment.name,"False"]
-		if self.connected:
+		if self.connected and len(self.stateList)>0:
 			self.send_update_state()
 			if len(self.expDone)>0:
 				self.send_exp_done()
@@ -172,7 +161,8 @@ class Client(PCore.QObject):
 		out=PCore.QDataStream(block,PCore.QIODevice.WriteOnly)
 		out.setVersion(PCore.QDataStream.Qt_4_0)
 		out.writeUInt16(0)
-		out.writeString(instruction)
+		instr=bytes(instruction,encoding="ascii")
+		out.writeString(instr)
 		if instruction=="updateState" or instruction=="expDone":
 			out.writeQStringList(List)
 		else:
@@ -284,6 +274,7 @@ class ProcessView(PGui.QWidget):
 		#Transfer
 		self.processSync=PCore.QProcess()
 		self.processSync.finished.connect(self.try_sync)
+		self.processSync.finished.connect(self.try_process)
 		self.currentClientSync=None
 		
 		#dealing with the klusta environment
@@ -476,7 +467,8 @@ class MainWindow(PGui.QWidget):
 		self.setWindowTitle("Server TCP + Process running")
 		
 	def display_output(self):
-		lines=str(self.processView.process.readAll())
+		byteArray=self.process.readAll()
+		string=str(byteArray,encoding='ascii')
 		self.processView.console.display(lines)
 
 	def listen(self,checked):
@@ -504,6 +496,7 @@ class MainWindow(PGui.QWidget):
 				event.ignore()
 				return
 		self.processView.close()
+		self.close()
 		event.accept()
 			
 

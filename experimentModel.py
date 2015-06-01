@@ -1,12 +1,10 @@
 import sys
-import os 
 import signal
 
 import PyQt4.QtCore as PCore
 import PyQt4.QtGui as PGui
 
 from experiment import Experiment
-#to do : check remove row/inser row, avoid reset model ?
 
 #------------------------------------------------------------------------------------------------------------------
 #       ExperimentModelBase: use on server
@@ -23,7 +21,7 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 		self.indexSync=None
 		self.nbChecked=0
 		self.NASPath=NASPath
-		
+
 	def add_experiment(self,folderPath,NASFolderPath=None):
 		if folderPath in self.names:
 			for experiment in self.experimentList:
@@ -36,7 +34,7 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 					return experiment.state
 			return 'error in add_experiment'
 		else:
-			experiment=Experiment(folderPath,self.NASPath,NASFolderPath)
+			experiment=Experiment(folderPath,self.NASPath,NASFolderPath,self)
 			experiment.try_process_on_server()
 			row=len(self.experimentList)
 			self.beginInsertRows(PCore.QModelIndex(),row,row)
@@ -46,7 +44,7 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 			self.endInsertRows()
 			self.names.append(folderPath)
 			return experiment.state
-		
+
 
 	#-----------------------------------------------------------------------------------------------------
 	# On the whole list
@@ -64,7 +62,7 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 		self.experimentList=[exp for index,exp in enumerate(self.experimentList) if index not in indexToRemove]
 		self.endResetModel()
 		return len(indexToRemove)
-	
+
 
 
 	#-----------------------------------------------------------------------------------------------------
@@ -76,7 +74,7 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 			if experiment.toProcess and not experiment.toSync:
 				return True
 		return False
-			
+
 	def process_one_experiment(self,process):
 		for index,experiment in enumerate(self.experimentList):
 			if experiment.toProcess and not experiment.toSync:
@@ -87,7 +85,7 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 				return True
 		self.indexProcess=None
 		return False
-				
+
 	def process_done(self,exitcode):
 		if self.indexProcess==None:
 			return
@@ -95,7 +93,7 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 		self.experimentList[self.indexProcess].is_done(exitcode)
 		self.indexProcess=None
 		self.endResetModel()
-		
+
 	def kill_current(self):
 		#check if something to kill
 		if self.indexProcess==None:
@@ -110,9 +108,7 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 			if self.experimentList[index].isRunning:
 				return True
 		return False
-
-
-
+	
 	#-----------------------------------------------------------------------------------------------------
 	# Transfer / Sync
 	#-----------------------------------------------------------------------------------------------------
@@ -142,6 +138,21 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 		self.indexSync=None
 		self.endResetModel()
 		
+	def kill_current_sync(self):
+		#check if something to kill
+		if self.indexSync==None:
+			return False
+		#warning message
+		index=self.indexSync
+		msgBox = PGui.QMessageBox(PGui.QMessageBox.Warning,"Kill sync ?","Kill the current sync (%s) ?"%self.experimentList[index].name, PGui.QMessageBox.Yes | PGui.QMessageBox.No)
+		msgBox.setDefaultButton(PGui.QMessageBox.No)
+		answer = msgBox.exec_()
+		#if yes, kill process (if it is still the current Experiment)
+		if answer==PGui.QMessageBox.Yes:
+			if self.experimentList[index].isSyncing:
+				return True
+		return False
+
 
 	#----------------------------------------------------------------------------------------
 	# Overrided function related to view
@@ -202,9 +213,6 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 				elif section==1:
 					return str("State")
 
-
-
-
 #------------------------------------------------------------------------------------------------------------------
 #       ExperimentModel (list of Experiment) on local computer, possible to communicate with server
 #------------------------------------------------------------------------------------------------------------------
@@ -225,7 +233,7 @@ class ExperimentModel(ExperimentModelBase):
 					return experiment.state
 			return 'error in add_experiment'
 		else:
-			experiment=Experiment(folderPath,self.NASPath,NASFolderPath)
+			experiment=Experiment(folderPath,self.NASPath,NASFolderPath,self)
 			row=len(self.experimentList)
 			self.beginInsertRows(PCore.QModelIndex(),row,row)
 			self.experimentList.append(experiment)
@@ -286,6 +294,7 @@ class ExperimentModel(ExperimentModelBase):
 		while (i+1)<len(stateList):
 			name=stateList[i]
 			state=stateList[i+1]
+			state=state.replace("local","server")
 			for experiment in self.experimentList:
 				if experiment.name==name:
 					experiment.state=state

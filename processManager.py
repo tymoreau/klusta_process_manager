@@ -1,5 +1,6 @@
 #Process Manager
 
+#QT
 import PyQt4.QtCore as PCore
 import PyQt4.QtGui as PGui
 import PyQt4.QtNetwork as PNet
@@ -10,16 +11,8 @@ import signal
 #Model
 from experimentModel import ExperimentModel
 
-
-SEPARATOR='---'*15
-
-#Command to perform on list
-PROGRAM="/home/david/anaconda/envs/klusta/bin/klusta"   # to change in experiment.py !
-NAS_PATH="./test/fakeNAS"
-
-#Connection to remote computer
-IP="10.51.101.29"
-PORT=8000
+#parameter
+from parameter import *
 
 
 #---------------------------------------------------------------------------------------------------------
@@ -242,18 +235,20 @@ class ProcessManager(PGui.QWidget):
 		self.tcpSocket.abort()
 		self.tcpSocket.connectToHost(PNet.QHostAddress(self.ip),self.port)
 		
-	def on_state_change(self,fullState):
-		state=str(fullState).split('.')[-1][:-5]
-		self.sendsMessage.emit("Socket state: "+state)
-		if state=='HostLookup':
-			self.button_connectServer.setEnabled(False)
-		elif state=='Connecting':
-			self.button_connectServer.setEnabled(False)
-		elif state=="Unconnected":
+	def on_state_change(self,intState):
+		if intState==0:
 			self.button_connectServer.setEnabled(True)
-		elif state=='Connected':
+			self.sendsMessage.emit("Socket unconnected")
+		elif intState==1:
+			self.button_connectServer.setEnabled(False)
+			self.sendsMessage.emit("Socket state: Host Look up...")
+		elif intState==2:
+			self.button_connectServer.setEnabled(False)
+			self.sendsMessage.emit("Socket state: Connecting...")
+		elif intState==3:
+			self.sendsMessage.emit("Socket state: Connected")
 			self.on_connection()
-			
+
 	def on_connection(self):
 		if self.tcpSocket.isValid():
 			self.sendsMessage.emit("Connected to server (ip="+self.ip+", port="+str(self.port)+")")
@@ -282,9 +277,12 @@ class ProcessManager(PGui.QWidget):
 		out=PCore.QDataStream(block,PCore.QIODevice.WriteOnly)
 		out.setVersion(PCore.QDataStream.Qt_4_0)
 		out.writeUInt16(0)
-		out.writeString(instruction)
+		
+		instr=bytes(instruction,encoding="ascii")
+		out.writeString(instr)
 		if instruction=="processList" and len(List)!=0:
 			out.writeQStringList(List)
+			print("send",List)
 		else:
 			print("send_protocol : instruction not known")
 			return 0
@@ -314,9 +312,12 @@ class ProcessManager(PGui.QWidget):
 				return 0
 			
 			#read instruction
-			instruction=self.dataStream.readQString()
+			instr=self.dataStream.readString()
+			instruction=str(instr,encoding='ascii')
+			
 			if instruction=="updateState":
 				stateList=self.dataStream.readQStringList()
+				print("receive state",stateList)
 				self.model.update_state(stateList)
 				
 			elif instruction=="expDone":
@@ -326,7 +327,7 @@ class ProcessManager(PGui.QWidget):
 				self.try_sync()
 			else:
 				print("received unknown instruction:",instruction)
-			
+
 
 #---------------------------------------------------------------------------------------------------------
 	#List
@@ -421,8 +422,28 @@ class ProcessManager(PGui.QWidget):
 #---------------------------------------------------------------------------------------------------------
 	#print output of the console in the console view
 	def display_output(self):
-		lines=str(self.process.readAll())
-		self.console.display(lines)
+		byteArray=self.process.readAll()
+		string=str(byteArray,encoding='ascii')
+		self.console.display(string)
+		
+#-----------------------------------------------------------------
+
+	def close(self):
+		if not self.process.waitForFinished(1):
+			if self.model.kill_current():
+				self.process.kill()
+				self.wasKill=True
+				self.process.waitForFinished(1)
+			else:
+				return
+		if not self.processSync.waitForFinished(1):
+			if self.model.kill_current_sync():
+				self.processSync.kill()
+				self.processSync.waitForFinished(1)
+			else:
+				return
+		self.tcpSocket.disconnectFromHost()
+		del self.model
 
 
 #---------------------------------------------------------------------------------------------------------

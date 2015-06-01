@@ -3,7 +3,7 @@ import PyQt4.QtGui as PGui
 
 import sys
 import signal
-import os
+import os  #to replace with qt
 
 class FileBrowser(PGui.QGroupBox):
 	sendsMessage=PCore.pyqtSignal(object)
