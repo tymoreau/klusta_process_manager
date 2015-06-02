@@ -198,6 +198,7 @@ class Experiment(PCore.QObject):
 			return
 		
 	def refresh_state(self):
+		self.finish=False 
 		self.toProcess=False
 		self.isRunning=False
 		self.isDone=False

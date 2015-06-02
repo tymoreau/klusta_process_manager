@@ -331,6 +331,8 @@ class ExperimentModel(ExperimentModelBase):
 		nbFound=0
 		for experiment in self.experimentList:
 			if experiment.isChecked:
+				if experiment.finish:
+					continue
 				if experiment.can_be_process_here():
 					nbFound+=1
 		self.endResetModel()
@@ -341,7 +343,7 @@ class ExperimentModel(ExperimentModelBase):
 		self.beginResetModel()
 		nbFound=0
 		for experiment in self.experimentList:
-			if experiment.isChecked:
+			if experiment.isChecked and not experiment.finish:
 				if experiment.can_be_process_server():
 					nbFound+=1
 		self.endResetModel()

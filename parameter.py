@@ -44,4 +44,4 @@ PORT=8000
 #where to put data on the server
 SERVER_PATH="./test/dataServer"
 #Default ip
-IP_server="127.0.0.1"
+IP_server="127.0.0.1" 
