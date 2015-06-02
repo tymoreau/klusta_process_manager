@@ -1,0 +1,115 @@
+channel_groups = {
+    # Shank index.
+
+
+    1:
+        {   
+            # List of channels to keep for spike detection.
+            'channels': [0, 1, 2, 3, 4, 5, 6, 7],
+            
+            # Adjacency graph. Dead channels will be automatically discarded
+            # by considering the corresponding subgraph.
+            'graph': [
+                (0,1), (0, 2), (2,1), (2, 3), (2, 4), (4, 3), (4, 5), (4, 6), (6, 5), (6, 7), (7, 5), (5, 3), (3, 1)
+            ],
+            
+            # 2D positions of the channels, only for visualization purposes
+            # in KlustaViewa. The unit doesn't matter.
+            'geometry': {
+                7: (0, 0),
+                6: (5, 10),
+                5: (-6, 20),
+                4: (7, 30),
+                3: (-8, 40),
+                2: (9, 50),
+                1: (-10, 60),
+                0: (11, 70),
+               
+            		}
+	},
+
+    2:
+        {   
+            # List of channels to keep for spike detection.
+            'channels': [8, 9, 10, 11, 12, 13, 14, 15],
+            
+            # Adjacency graph. Dead channels will be automatically discarded
+            # by considering the corresponding subgraph.
+            'graph': [
+                (8, 9), (8, 10), (10, 9), (10, 11), (10, 12), (12, 11), (12, 14), (12, 13), (14, 13), (14, 15), (15, 13), (13, 11), (11, 9)
+
+            ],
+            
+            # 2D positions of the channels, only for visualization purposes
+            # in KlustaViewa. The unit doesn't matter.
+            'geometry': {
+                15: (0, 0),
+                14: (5, 10),
+                13: (-6, 20),
+                12: (7, 30),
+                11: (-8, 40),
+                10: (9, 50),
+                9: (-10, 60),
+                8: (11, 70),
+               
+            		}
+	},
+
+
+
+    3:
+        {   
+            # List of channels to keep for spike detection.
+            'channels': [16, 17, 18, 19, 20, 21, 22, 23],
+            
+            # Adjacency graph. Dead channels will be automatically discarded
+            # by considering the corresponding subgraph.
+            'graph': [
+                (16,17), (16,18), (17,18), (18,19), (18,20), (20,19), (20, 21),(20, 22), (22, 21), (22, 23), (23, 21), (21,19),(17,19)  
+            ],
+            
+            # 2D positions of the channels, only for visualization purposes
+            # in KlustaViewa. The unit doesn't matter.
+            'geometry': {
+                23: (0, 0),
+                22: (5, 10),
+                21: (-6, 20),
+                20: (7, 30),
+                19: (-8, 40),
+                18: (9, 50),
+                17: (-10, 60),
+                16: (11, 70),
+               
+            		}
+	},
+
+
+
+    4:
+        {   
+            # List of channels to keep for spike detection.
+            'channels': [24, 25, 26, 27, 28, 29, 30, 31],
+            
+            # Adjacency graph. Dead channels will be automatically discarded
+            # by considering the corresponding subgraph.
+            'graph': [
+                (24, 25), (24, 26), (26, 25), (26, 27), (26, 28), (28, 27), (28, 29), (28, 30), (30, 29), (30, 31), (31, 29), (29, 27), (27, 25)
+            ],
+            
+            # 2D positions of the channels, only for visualization purposes
+            # in KlustaViewa. The unit doesn't matter.
+            'geometry': {
+                31: (0, 0),
+                30: (5, 10),
+                29: (-6, 20),
+                28: (7, 30),
+                27: (-8, 40),
+                26: (9, 50),
+                25: (-10, 60),
+                24: (11, 70),
+               
+            		}
+	},
+
+
+}

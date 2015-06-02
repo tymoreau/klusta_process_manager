@@ -5,6 +5,7 @@ Python 3.x and PyQt4 (already in Anaconda)
 
 With Miniconda or Anaconda install, do:
 > conda install conda python=3
+
 > conda update pyqt
 
 
@@ -13,6 +14,7 @@ Install
 
 * From DropBox: copy paste whole folder
 * From GitHub: 
+
 > git clone https://github.com/tymoreau/klusta_process_manager.git
 
 
