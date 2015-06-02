@@ -1,5 +1,3 @@
-#Process Manager
-
 #QT
 import PyQt4.QtCore as PCore
 import PyQt4.QtGui as PGui
@@ -113,7 +111,6 @@ class ProcessManager(PGui.QWidget):
 		self._edits()
 		self._frames()
 		self._layout()
-		
 		
 #---------------------------------------------------------------------------------------------------------
 	#Layout
