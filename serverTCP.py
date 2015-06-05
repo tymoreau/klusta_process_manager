@@ -467,7 +467,7 @@ class MainWindow(PGui.QWidget):
 		self.setWindowTitle("Server TCP + Process running")
 		
 	def display_output(self):
-		byteArray=self.process.readAll()
+		byteArray=self.processView.processreadAll()
 		string=str(byteArray,encoding='ascii')
 		self.processView.console.display(lines)
 
