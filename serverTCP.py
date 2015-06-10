@@ -37,7 +37,7 @@ class Client(PCore.QObject):
 		self.dataStream.setVersion(PCore.QDataStream.Qt_4_0)
 		
 		#Client infos
-		self.ip=self.tcpSocket.localAddress().toString()
+		self.ip=self.tcpSocket..peerAddress().toString()
 		self.connected=True
 		
 		#model
