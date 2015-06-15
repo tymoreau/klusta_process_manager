@@ -168,7 +168,7 @@ class ExperimentModelBase(PCore.QAbstractTableModel):
 		col=index.column()
 		if role==PCore.Qt.DisplayRole:
 			if col==0:
-				print(self.experimentList[row].name, self.experimentList[row].state)        #display name,state to debug
+				#print(self.experimentList[row].name, self.experimentList[row].state)        #display name,state to debug
 				return str( self.experimentList[row].name )
 			if col==1:
 				return str( self.experimentList[row].state )

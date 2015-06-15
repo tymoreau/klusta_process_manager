@@ -2,10 +2,10 @@
 #    PATH
 #------------------------------------------------------------------------------------------
 #Path to the backup (NAS/harddrive mounted on computer)
-NAS_PATH="./test/fakeNAS"
+NAS_PATH="/home/david/NAS02"
 
 #Path to data
-ROOT='./test/dataLocal'
+ROOT='/home/david/NAS02'
 
 #------------------------------------------------------------------------------------------
 #    Processing: > klusta fileName.prm
@@ -15,6 +15,19 @@ ROOT='./test/dataLocal'
 
 # To avoid "source activate klusta", put full path
 PROGRAM="/home/david/anaconda/envs/klusta/bin/klusta"
+
+
+
+
+#------------------------------------------------------------------------------------------
+#    FileBrowser     
+#------------------------------------------------------------------------------------------
+BACK_UP=NAS_PATH
+DEFAULT_IMAGE="images/folder-grey.png"
+LENGTH_ID=3
+DATE_TIME_FORMAT="yyyy_MM_dd_HH_mm"
+EXP_PATH="/Experiments"
+
 
 #------------------------------------------------------------------------------------------
 #    Transfer:  > rsync RSYNC_ARG /source/ /destination     

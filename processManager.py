@@ -1,10 +1,15 @@
+import sys
+import signal
+
+#Remove Qvariant and all from PyQt (was not done for python2)
+import sip
+sip.setapi('QVariant',2)
+sip.setapi('QString',2)
+
 #QT
 import PyQt4.QtCore as PCore
 import PyQt4.QtGui as PGui
 import PyQt4.QtNetwork as PNet
-
-import sys
-import signal
 
 #Model
 from experimentModel import ExperimentModel
@@ -97,9 +102,11 @@ class ProcessManager(PGui.QWidget):
 
 		#dealing with the klusta environment (not perfect)
 		env = PCore.QProcess.systemEnvironment()
+		
 		itemToReplace=[item for item in env if item.startswith('PATH=')]
 		for item in itemToReplace:
 			newitem=item.replace('/anaconda/bin:','/anaconda/envs/klusta/bin:')
+			newitem=item.replace('/miniconda/bin:','/miniconda/envs/klusta/bin:')
 			env.remove(item)
 			env.append(newitem)
 		env.append("CONDA_DEFAULT_ENV=klusta")
@@ -424,7 +431,6 @@ class ProcessManager(PGui.QWidget):
 		self.console.display(string)
 		
 #-----------------------------------------------------------------
-
 	def close(self):
 		if not self.process.waitForFinished(1):
 			if self.model.kill_current():
@@ -444,20 +450,20 @@ class ProcessManager(PGui.QWidget):
 
 
 #---------------------------------------------------------------------------------------------------------
-#  If launch alone
+#  If launch alone (not up to date)
 #---------------------------------------------------------------------------------------------------------
-if __name__=='__main__':
-	PGui.QApplication.setStyle("cleanlooks")
-	app=PGui.QApplication(sys.argv)
+#if __name__=='__main__':
+	#PGui.QApplication.setStyle("cleanlooks")
+	#app=PGui.QApplication(sys.argv)
 	
 	#to be able to close wth ctrl+c
-	signal.signal(signal.SIGINT, signal.SIG_DFL)
+	#signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 	
-	win=ProcessManager()
+	#win=ProcessManager()
 
-	win.setMinimumSize(1000,600)
+	#win.setMinimumSize(1000,600)
 
-	win.show()
+	#win.show()
 
-	sys.exit(app.exec_())
+	#sys.exit(app.exec_())

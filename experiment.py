@@ -151,6 +151,8 @@ class Experiment(PCore.QObject):
 		self.isChecked=True
 		self.state="--"
 		
+		
+		
 		#Processing
 		self.toProcess=False
 		self.isRunning=False
