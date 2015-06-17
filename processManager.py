@@ -5,6 +5,7 @@ import signal
 import sip
 sip.setapi('QVariant',2)
 sip.setapi('QString',2)
+sip.setapi('QByteArray',2)
 
 #QT
 import PyQt4.QtCore as PCore
@@ -25,7 +26,6 @@ class ConsoleView(PGui.QWidget):
 	
 	def __init__(self):
 		super(ConsoleView,self).__init__()
-		
 		#output
 		self.output=PGui.QTextEdit()
 		self.output.setReadOnly(True)
@@ -106,9 +106,13 @@ class ProcessManager(PGui.QWidget):
 		itemToReplace=[item for item in env if item.startswith('PATH=')]
 		for item in itemToReplace:
 			newitem=item.replace('/anaconda/bin:','/anaconda/envs/klusta/bin:')
-			newitem=item.replace('/miniconda/bin:','/miniconda/envs/klusta/bin:')
+			print(newitem)
+			newitem=newitem.replace('/miniconda/bin:','/miniconda/envs/klusta/bin:')
+			print(newitem)
 			env.remove(item)
 			env.append(newitem)
+			env.append(PROGRAM)
+			
 		env.append("CONDA_DEFAULT_ENV=klusta")
 		self.process.setEnvironment(env)
 		
@@ -427,7 +431,7 @@ class ProcessManager(PGui.QWidget):
 	#print output of the console in the console view
 	def display_output(self):
 		byteArray=self.process.readAll()
-		string=str(byteArray,encoding='ascii')
+		string="".join(byteArray)
 		self.console.display(string)
 		
 #-----------------------------------------------------------------

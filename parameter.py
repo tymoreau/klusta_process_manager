@@ -2,11 +2,11 @@
 #    PATH
 #------------------------------------------------------------------------------------------
 #Path to the backup (NAS/harddrive mounted on computer)
-NAS_PATH="/home/david/NAS02"
+NAS_PATH="./test/fakeNAS"
 BACK_UP=NAS_PATH
 
 #Path to data
-ROOT='/home/david/NAS02'
+ROOT='./test/dataLocal'
 
 #------------------------------------------------------------------------------------------
 #    Processing: > klusta fileName.prm
@@ -32,7 +32,7 @@ TITLE="FileBrowser + Process Manager"
 #    FileBrowser     
 #------------------------------------------------------------------------------------------
 
-DEFAULT_IMAGE="images/folder-grey.png"
+DEFAULT_IMAGE="/images/folder-grey.png"
 LENGTH_ID=3
 DATE_TIME_FORMAT="yyyy_MM_dd_HH_mm"
 EXP_PATH="/Experiments"

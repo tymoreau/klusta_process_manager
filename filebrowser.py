@@ -24,11 +24,12 @@ class Experiment(QtCore.QObject):
 		self.image=expInfoDict["image"]
 		self.pathBackUP=expInfoDict["pathBackUP"]
 		self.pathLocal=expInfoDict["pathLocal"]
-		self.folder=QtCore.QDir(self.pathLocal)
 		self.dateTime=None
 		self.date=None
 		self.dayTime=None
 		self.string_to_date(expInfoDict["dateTime"])
+		
+		self.folder=QtCore.QDir(self.pathLocal)
 		
 		#view/database related
 		self.hasChange=False
@@ -60,6 +61,53 @@ class Experiment(QtCore.QObject):
 	#comparison between object (lt=less than)
 	def __lt__(self,other):
 		return self.dateTime<other.dateTime
+	
+	
+	def createFiles(self,prmModel,prbModel):
+		#look for raw data
+		dataName=self.folderName+'.dat'
+		if not self.folder.exists(dataName):
+			dataName=self.folderName+'.raw.kwd'
+			if not self.folder.exists(dataName):
+				print("no raw data")
+				return False
+		#prm and prb files
+		prmPath=self.folder.filePath(self.folderName+'.prm')
+		prbPath=self.folder.filePath(self.folderName+'.prb')
+		#Delete existing file
+		if QtCore.QFile.exists(prmPath):
+			QtCore.QFile.remove(prmPath)
+		if QtCore.QFile.exists(prbPath):
+			QtCore.QFile.remove(prbPath)
+		#Copy file
+		res1=QtCore.QFile.copy(prmModel.filePath(),prmPath)
+		res2=QtCore.QFile.copy(prbModel.filePath(),prbPath)
+		if not (res1 and res2):
+			print("impossible to copy")
+			return False
+		#Modify prm
+		output=[]
+		with open(prmPath,"r+") as prm:
+			find=0
+			for line in prm.readlines():
+				if line.startswith("experiment_name"):
+					line="experiment_name = '%s' \n"%self.folderName
+					find+=1
+				elif line.startswith("raw_data_files"):
+					line="raw_data_files = '%s' \n"%dataName
+					find+=1
+				elif line.startswith("prb_file"):
+					line="prb_file = '%s.prb' \n"%self.folderName
+					find+=1
+				output.append(line)
+			if find!=3:
+				print("prm Model incorrect")
+				QtCore.QFile.remove(prmPath)
+				return False
+			prm.seek(0)
+			prm.write(''.join(output))
+			prm.truncate()
+			return True
 
 #-----------------------------------------------------------------------------------------------------------------------
 # Worker: Runs continuously in a separate thread
@@ -210,7 +258,6 @@ class Model(QtCore.QAbstractTableModel):
 		self.delegate.middleDay=[ int(summ/2) for summ in middleDay if summ%2==0]
 		self.delegate.middleDayOdd=[ int(summ/2) for summ in middleDay if summ%2!=0]
 
-
 	def clear(self):
 		self.beginResetModel()
 		self.experimentList=[]
@@ -247,6 +294,10 @@ class Model(QtCore.QAbstractTableModel):
 	def close(self):
 		self.worker.abort()
 		return self.experimentDict.values()
+	
+	def createFiles_onSelection(self,selection,prmModel,prbModel):
+		for index in selection:
+			self.experimentList[index.row()].createFiles(prmModel=prmModel,prbModel=prbModel)
 
 #-----------------------------------------------------------------------------------------------------------------------
 # Delegate
@@ -306,7 +357,7 @@ class TableDelegate(QtGui.QStyledItemDelegate):
 			painter.drawText(option.rect,QtCore.Qt.AlignVCenter,index.data())
 
 #-----------------------------------------------------------------------------------------------------------------------
-# View
+# View (+fileSystemModel)
 #-----------------------------------------------------------------------------------------------------------------------
 class View_Folders(QtGui.QWidget):
 
@@ -343,27 +394,36 @@ class View_Folders(QtGui.QWidget):
 		self.listFile.hide()
 		self.space.show()
 		
-
+	def refresh(self):
+		self.listFile.update()
+		
 	#User clicked on one folder
 	def on_selection_change(self,selected,deselected):
 		if len(selected.indexes())==0:
-			self.listFile.hide()
-			self.space.show()
-			return
+			if len(self.table.selectedIndexes())==0:
+				self.listFile.hide()
+				self.space.show()
+				return
+			else:
+				lastIndex=self.table.selectedIndexes()[-1]
+		else:
+			lastIndex=selected.indexes()[-1]
 		self.listFile.show()
 		self.space.hide()
 		#Set ListFile to display folder's content
-		lastIndex=selected.indexes()[-1]
 		path=lastIndex.model().pathLocal_from_index(lastIndex)
 		self.folderModel.setRootPath(path)
 		self.listFile.setModel(self.folderModel)
 		self.listFile.setRootIndex(self.folderModel.index(path))
+		self.listFile.clearSelection()
 		
 	#user changed animal
 	def reset_view(self):
 		self.table.reset()
+		self.table.clearSelection()
 		self.folderModel.reset()
 		self.listFile.hide()
+		self.listFile.clearSelection()
 		self.space.show()
 		self.table.resizeColumnsToContents()
 		he=self.table.horizontalHeader()
@@ -382,9 +442,6 @@ class FileBrowser(QtGui.QWidget):
 		self.animalComboBox=QtGui.QComboBox()
 		self.animalComboBox.currentIndexChanged.connect(self.on_animal_change)
 
-		#progress label
-		self.label_load=QtGui.QLabel('')
-
 		#model/view
 		self.delegate=TableDelegate(self)
 		self.model=Model(self.delegate,self)
@@ -400,16 +457,61 @@ class FileBrowser(QtGui.QWidget):
 		
 		#button 
 		self.button_add=QtGui.QPushButton(QtGui.QIcon("images/downarrow.png")," ")
+		self.button_createFiles=QtGui.QPushButton("Create prm/prb")
+		self.button_createFiles.clicked.connect(self.createFiles)
+		self.button_createFiles.setEnabled(False)
+		self.button_loadModels=QtGui.QPushButton("Load models")
+		self.button_loadModels.clicked.connect(self.loadModels)
+		
+		#label
+		self.label_load=QtGui.QLabel('')
+		self.label_prmModel=QtGui.QLabel('no prm model')
+		self.label_prbModel=QtGui.QLabel('no prb model')
+		
+		self.prmModel=QtCore.QFileInfo()
+		self.prbModel=QtCore.QFileInfo()
 		
 		#Layout
+		grid=QtGui.QGridLayout()
+		grid.addWidget(self.button_loadModels,0,0,2,1)
+		grid.addWidget(self.label_prmModel,0,1)
+		grid.addWidget(self.label_prbModel,1,1)
+		grid.addWidget(self.button_createFiles,0,2,2,1)
 		hbox=QtGui.QHBoxLayout()
 		hbox.addWidget(self.button_add)
+		hbox.addLayout(grid)
 		hbox.addWidget(self.label_load)
 		vbox=QtGui.QVBoxLayout()
 		vbox.addWidget(self.animalComboBox)
 		vbox.addWidget(self.view)
 		vbox.addLayout(hbox)
 		self.setLayout(vbox)
+		
+	def get_experiment_selection(self):
+		return self.view.table.selectedIndexes()
+		
+	def createFiles(self):
+		if self.prmModel.exists() and self.prbModel.exists():
+			selection=self.get_experiment_selection()
+			self.model.createFiles_onSelection(selection,prmModel=self.prmModel,prbModel=self.prbModel)
+		self.view.refresh()
+	
+	def loadModels(self):
+		filebox=QtGui.QFileDialog(self,"Load model for PRB and PRM files")
+		filebox.setFileMode(QtGui.QFileDialog.ExistingFiles)
+		filebox.setNameFilters(["PRB/PRM (*.prm *.prb)"])
+		filebox.setOptions(QtGui.QFileDialog.DontUseNativeDialog)
+		if filebox.exec_():
+			for selectedFile in filebox.selectedFiles():
+				if selectedFile.endswith(".prm"):
+					self.prmModel.setFile(selectedFile)
+					self.label_prmModel.setText(self.prmModel.fileName())
+				elif selectedFile.endswith(".prb"):
+					self.prbModel.setFile(selectedFile)
+					self.label_prbModel.setText(self.prbModel.fileName())
+					
+		if self.prmModel.exists() and self.prbModel.exists():
+			self.button_createFiles.setEnabled(True)
 
 	def display_load(self,i):
 		percentage=str(i)+'%'

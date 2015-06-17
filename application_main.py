@@ -77,7 +77,7 @@ class MainWindow(QtGui.QWidget):
 
 	#Button_add (green arrow): connect FileBrowser to processManager
 	def add_to_process_manager(self):
-		selection=self.fileBrowser.view.table.selectedIndexes()
+		selection=self.fileBrowser.get_experiment_selection()
 		for item in selection:
 			folderName=item.data()
 			animal=folderName.split('_')[0]
