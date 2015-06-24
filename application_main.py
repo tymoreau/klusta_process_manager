@@ -13,6 +13,7 @@ from PyQt4 import QtCore,QtGui,QtSql
 from processManager import ProcessManager
 from filebrowser import FileBrowser
 from database import Database
+from experiment import Experiment
 
 #Import parameter
 from parameter import *
@@ -35,16 +36,30 @@ class LogView(QtGui.QWidget):
 		self.listMessage=self.listMessage[-3:]
 		self.label.setText("\n".join(self.listMessage))
 
-
 #-------------------------------------------------------------------------------------------------------------------
 class MainWindow(QtGui.QWidget):
 	sendsMessage=QtCore.pyqtSignal(object)
 	
 	def __init__(self,database):
 		super(MainWindow,self).__init__()
+		#database
+		self.database=database
 		
-		#Views
-		self.fileBrowser=FileBrowser(database)
+		#dictionnary of experiment
+		self.experimentDict={}
+		
+		#watch for change in file system
+		self.watcher=QtCore.QFileSystemWatcher(self)
+		self.watcher.addPath(ROOT)
+		self.watcher.directoryChanged.connect(self.on_directory_change)
+		self.watchList=[]
+		
+		#FileBrowser
+		self.animalFolderList=self.database.get_animalID_list(notEmpty=True)
+		self.fileBrowser=FileBrowser()
+		self.fileBrowser.animalComboBox.currentIndexChanged.connect(self.on_animal_change)
+		self.fileBrowser.set_animalComboBox(self.animalFolderList)
+		
 		self.processManager=ProcessManager(BACK_UP)
 		self.logView=LogView(self)
 
@@ -54,9 +69,6 @@ class MainWindow(QtGui.QWidget):
 		#Connect message to log
 		self.processManager.sendsMessage.connect(self.logView.add_message)
 		self.sendsMessage.connect(self.logView.add_message)
-		
-		#database
-		self.database=database
 
 		#Layout
 		splitterVertical=QtGui.QSplitter(QtCore.Qt.Vertical)
@@ -74,19 +86,54 @@ class MainWindow(QtGui.QWidget):
 		self.setLayout(vbox)
 		self.setMinimumSize(WIDTH,HEIGHT)
 		self.setWindowTitle(TITLE)
+		
+	#TODO
+	def on_directory_change(self,path):
+		if path==ROOT:
+			print(ROOT, "has changed")
+			pass
+			#check for new/deleted animal (database + list)
+		else:
+			folderName=QtCore.QFileInfo(path).fileName()
+			if folderName in self.experimentDict:
+				pass
+				#print(folderName,"has changed")
+				#self.experimentDict[folderName].update()
+			elif folderName in self.animalFolderList:
+				pass
+				#print(folderName,"has change")
+				#add/remove exp (database+dict)
+		
+	def on_animal_change(self,index):
+		animalID=self.fileBrowser.animalComboBox.itemText(index)
+		experimentInfoList=self.database.get_experimentInfo_list(animal=animalID)
+		if self.watchList:
+			self.watcher.removePaths(self.watchList)
+		self.watchList=[]
+		expList=[]
+		for expInfoDict in experimentInfoList:
+			folderName=expInfoDict["folderName"]
+			if folderName not in self.experimentDict:
+				self.experimentDict[folderName]=Experiment(expInfoDict,parent=self)
+			expList.append(self.experimentDict[folderName])
+			self.watchList.append(self.experimentDict[folderName].pathLocal)
+		self.watcher.addPaths(self.watchList)
+		self.fileBrowser.reset_experimentList(expList)
 
 	#Button_add (green arrow): connect FileBrowser to processManager
 	def add_to_process_manager(self):
 		selection=self.fileBrowser.get_experiment_selection()
+		expList=[]
 		for item in selection:
-			folderName=item.data()
-			animal=folderName.split('_')[0]
-			path=ROOT+"/"+animal+"/Experiments/"+folderName
-			state=self.processManager.add_experiment(path)
-		self.sendsMessage.emit("Added experiments to list")
+			exp=self.experimentDict[item.data()]
+			expList.append(exp)
+		self.processManager.add_experiments(expList)
 
 	def closeEvent(self,event):
-		self.fileBrowser.close()
+		expList=self.experimentDict.values()
+		self.fileBrowser.model.worker.abort()
+		self.database.reverbate_change(expList)
+		self.database.close()
 		self.processManager.close()
 		self.close()
 
@@ -109,7 +156,6 @@ if __name__ == '__main__':
 		msgBox.setText("ROOT do not refers to a folder: "+str(ROOT))
 		msgBox.exec_()
 	else:
-		
 		#to be able to close wth ctrl+c
 		signal.signal(signal.SIGINT, signal.SIG_DFL)
 		

@@ -10,105 +10,6 @@ sip.setapi('QString',2)
 #import QT
 from PyQt4 import QtCore,QtGui
 
-#Import parameter
-from parameter import *
-
-#-----------------------------------------------------------------------------------------------------------------------
-#  Experiment
-#-----------------------------------------------------------------------------------------------------------------------
-class Experiment(QtCore.QObject):
-	
-	def __init__(self,expInfoDict,parent=None):
-		super(Experiment,self).__init__(parent)
-		self.folderName=expInfoDict["folderName"]
-		self.image=expInfoDict["image"]
-		self.pathBackUP=expInfoDict["pathBackUP"]
-		self.pathLocal=expInfoDict["pathLocal"]
-		self.dateTime=None
-		self.date=None
-		self.dayTime=None
-		self.string_to_date(expInfoDict["dateTime"])
-		
-		self.folder=QtCore.QDir(self.pathLocal)
-		
-		#view/database related
-		self.hasChange=False
-		self.colorDone=False
-		
-	def reset_folder_image(self):
-		previousImage=self.image
-		if len(self.folder.entryList())==0:
-			self.image="images/folder-grey.png"
-		elif len(self.folder.entryList(['*.kwik']))>0:
-			self.image="images/folder-violet.png"
-		elif len(self.folder.entryList(['*.dat','*.raw.kwd']))>0:
-			self.image="images/folder-green.png"
-		else:
-			self.image="images/folder-blue.png"
-		if self.image!=previousImage:
-			self.hasChange=True
-		self.colorDone=True
-		
-	def string_to_date(self,date):
-		self.dateTime=QtCore.QDateTime().fromString(date,DATE_TIME_FORMAT)
-		if not self.dateTime.isValid():
-			return False
-		self.date=self.dateTime.toString(" MMM \n yyyy ")
-		self.day=self.dateTime.toString(" ddd dd ")
-		self.time=self.dateTime.toString(" hh:mm ")
-		return True
-	
-	#comparison between object (lt=less than)
-	def __lt__(self,other):
-		return self.dateTime<other.dateTime
-	
-	
-	def createFiles(self,prmModel,prbModel):
-		#look for raw data
-		dataName=self.folderName+'.dat'
-		if not self.folder.exists(dataName):
-			dataName=self.folderName+'.raw.kwd'
-			if not self.folder.exists(dataName):
-				print("no raw data")
-				return False
-		#prm and prb files
-		prmPath=self.folder.filePath(self.folderName+'.prm')
-		prbPath=self.folder.filePath(self.folderName+'.prb')
-		#Delete existing file
-		if QtCore.QFile.exists(prmPath):
-			QtCore.QFile.remove(prmPath)
-		if QtCore.QFile.exists(prbPath):
-			QtCore.QFile.remove(prbPath)
-		#Copy file
-		res1=QtCore.QFile.copy(prmModel.filePath(),prmPath)
-		res2=QtCore.QFile.copy(prbModel.filePath(),prbPath)
-		if not (res1 and res2):
-			print("impossible to copy")
-			return False
-		#Modify prm
-		output=[]
-		with open(prmPath,"r+") as prm:
-			find=0
-			for line in prm.readlines():
-				if line.startswith("experiment_name"):
-					line="experiment_name = '%s' \n"%self.folderName
-					find+=1
-				elif line.startswith("raw_data_files"):
-					line="raw_data_files = '%s' \n"%dataName
-					find+=1
-				elif line.startswith("prb_file"):
-					line="prb_file = '%s.prb' \n"%self.folderName
-					find+=1
-				output.append(line)
-			if find!=3:
-				print("prm Model incorrect")
-				QtCore.QFile.remove(prmPath)
-				return False
-			prm.seek(0)
-			prm.write(''.join(output))
-			prm.truncate()
-			return True
-
 #-----------------------------------------------------------------------------------------------------------------------
 # Worker: Runs continuously in a separate thread
 # Can do differents method / method can be interrupt by new method call
@@ -192,31 +93,23 @@ class Model(QtCore.QAbstractTableModel):
 		#list of current experiments to display
 		self.experimentList=[]
 		
-		#dictionnary of experiment
-		self.experimentDict={}
-		
 		#Delegate
 		self.delegate=delegate
 
-	def rowCount(self,parent=QtCore.QModelIndex()):
+	def rowCount(self,QModelIndex):
 		return len(self.experimentList)
 	
-	def columnCount(self,parent=QtCore.QModelIndex()):
+	def columnCount(self,QModelIndex):
 		return 4
 
 	def color_done(self,row):
 		idx=self.index(row,3)
 		self.dataChanged.emit(idx,idx)
 		
-	def reset_list(self,experimentInfoList):
+	def reset_list(self,expList):
 		self.beginResetModel()
-		self.experimentList=[]
-		for expInfoDict in experimentInfoList:
-			folderName=expInfoDict["folderName"]
-			if folderName not in self.experimentDict.keys():
-				self.experimentDict[folderName]=Experiment(expInfoDict,parent=self)
-			self.experimentList.append(self.experimentDict[folderName])
-		self.experimentList.sort()
+		expList.sort()
+		self.experimentList=expList
 		self.reset_horizontal_lines()
 		self.endResetModel()
 		self.worker.requestMethod("color_folder",self.experimentList)
@@ -224,6 +117,58 @@ class Model(QtCore.QAbstractTableModel):
 	#To draw horizontal line according to date
 	def reset_horizontal_lines(self):
 		listDate=[exp.dateTime for exp in self.experimentList]
+		self.delegate.reset_horizontal_lines(listDate)
+
+	def clear(self):
+		self.beginResetModel()
+		self.experimentList=[]
+		self.endResetModel()
+
+	def data(self,index,role):
+		col=index.column()
+		row=index.row()
+		if role==QtCore.Qt.DisplayRole:
+			if col==0:
+				return self.experimentList[row].yearMonth
+			if col==1:
+				return self.experimentList[row].day
+			if col==2:
+				return self.experimentList[row].time
+			if col==3:
+				return self.experimentList[row].folderName
+		if role==QtCore.Qt.DecorationRole:
+			if col==3:
+				return QtGui.QIcon(self.experimentList[row].folder.image)
+
+	def flags(self,index):
+		if index.column()==3:
+			return QtCore.Qt.ItemIsEnabled|QtCore.Qt.ItemIsSelectable
+		return QtCore.Qt.NoItemFlags
+	
+	def pathLocal_from_index(self,index):
+		exp=self.experimentList[index.row()]
+		return exp.pathLocal
+	
+	def createFiles_onSelection(self,selection,prmModel,prbModel):
+		for index in selection:
+			self.experimentList[index.row()].folder.create_files(prmModel=prmModel,prbModel=prbModel)
+
+#-----------------------------------------------------------------------------------------------------------------------
+# Delegate
+#-----------------------------------------------------------------------------------------------------------------------
+class TableDelegate(QtGui.QStyledItemDelegate):
+	#colors=QtGui.QColor.colorNames()
+	
+	def __init__(self,parent=None):
+		super(TableDelegate,self).__init__(parent)
+		self.weekLines=[]
+		self.dayLines=[]
+		self.middleWeek=[]
+		self.middleWeekOdd=[]
+		self.middleDay=[]
+		self.middleDayOdd=[]
+		
+	def reset_horizontal_lines(self,listDate):
 		previousMonth=listDate[0].date().month()
 		previousWeek=listDate[0].date().weekNumber()[0]
 		previousDay=listDate[0].date().day()
@@ -244,75 +189,19 @@ class Model(QtCore.QAbstractTableModel):
 			previousDay=day
 		weekLines.append(len(listDate)-1)
 		
-		self.delegate.weekLines=weekLines
-		self.delegate.dayLines=dayLines
+		self.weekLines=weekLines
+		self.dayLines=dayLines
 		
 		week2=[-1]+weekLines[:-1]
 		middleWeek=[ (a+b+1) for a,b in zip(weekLines,week2)]
-		self.delegate.middleWeek=[ int(summ/2) for summ in middleWeek if summ%2==0]
-		self.delegate.middleWeekOdd=[ int(summ/2) for summ in middleWeek if summ%2!=0]
+		self.middleWeek=[ int(summ/2) for summ in middleWeek if summ%2==0]
+		self.middleWeekOdd=[ int(summ/2) for summ in middleWeek if summ%2!=0]
 		dayLines=dayLines+weekLines
 		dayLines.sort()
 		day2=[-1]+dayLines[:-1]
 		middleDay=[(a+b+1) for a,b in zip(dayLines,day2)]
-		self.delegate.middleDay=[ int(summ/2) for summ in middleDay if summ%2==0]
-		self.delegate.middleDayOdd=[ int(summ/2) for summ in middleDay if summ%2!=0]
-
-	def clear(self):
-		self.beginResetModel()
-		self.experimentList=[]
-		self.endResetModel()
-
-	def data(self,index,role):
-		col=index.column()
-		row=index.row()
-		if role==QtCore.Qt.DisplayRole:
-			if col==0:
-				return self.experimentList[row].date
-			if col==1:
-				return self.experimentList[row].day
-			if col==2:
-				return self.experimentList[row].time
-			if col==3:
-				return self.experimentList[row].folderName
-		if role==QtCore.Qt.DecorationRole:
-			if col==3:
-				return QtGui.QIcon(self.experimentList[row].image)
-
-	def flags(self,index):
-		if index.column()==3:
-			return QtCore.Qt.ItemIsEnabled|QtCore.Qt.ItemIsSelectable
-		return QtCore.Qt.NoItemFlags
-	
-	def get_expList(self):
-		return self.experimentDict.values()
-	
-	def pathLocal_from_index(self,index):
-		exp=self.experimentList[index.row()]
-		return exp.pathLocal
-
-	def close(self):
-		self.worker.abort()
-		return self.experimentDict.values()
-	
-	def createFiles_onSelection(self,selection,prmModel,prbModel):
-		for index in selection:
-			self.experimentList[index.row()].createFiles(prmModel=prmModel,prbModel=prbModel)
-
-#-----------------------------------------------------------------------------------------------------------------------
-# Delegate
-#-----------------------------------------------------------------------------------------------------------------------
-class TableDelegate(QtGui.QStyledItemDelegate):
-	#colors=QtGui.QColor.colorNames()
-	
-	def __init__(self,parent=None):
-		super(TableDelegate,self).__init__(parent)
-		self.weekLines=[]
-		self.dayLines=[]
-		self.middleWeek=[]
-		self.middleWeekOdd=[]
-		self.middleDay=[]
-		self.middleDayOdd=[]
+		self.middleDay=[ int(summ/2) for summ in middleDay if summ%2==0]
+		self.middleDayOdd=[ int(summ/2) for summ in middleDay if summ%2!=0]
 
 	def paint(self,painter,option,index):
 		row=index.row()
@@ -435,12 +324,11 @@ class View_Folders(QtGui.QWidget):
 #-----------------------------------------------------------------------------------------------------------------------
 class FileBrowser(QtGui.QWidget):
 	
-	def __init__(self,database,parent=None):
+	def __init__(self,parent=None):
 		super(FileBrowser,self).__init__(parent)
 
 		#Combo Box
 		self.animalComboBox=QtGui.QComboBox()
-		self.animalComboBox.currentIndexChanged.connect(self.on_animal_change)
 
 		#model/view
 		self.delegate=TableDelegate(self)
@@ -448,12 +336,6 @@ class FileBrowser(QtGui.QWidget):
 		self.view=View_Folders(self.model,self)
 		self.model.worker.valueChanged.connect(self.display_load)
 		self.view.table.setItemDelegate(self.delegate)
-		
-		#Database
-		self.database=database
-		animalFolderList=self.database.get_animalID_list(notEmpty=True)
-		for animalID in animalFolderList:
-			self.animalComboBox.addItem(animalID)
 		
 		#button 
 		self.button_add=QtGui.QPushButton(QtGui.QIcon("images/downarrow.png")," ")
@@ -486,6 +368,11 @@ class FileBrowser(QtGui.QWidget):
 		vbox.addWidget(self.view)
 		vbox.addLayout(hbox)
 		self.setLayout(vbox)
+		
+	def set_animalComboBox(self,animalList):
+		for animalID in animalList:
+			self.animalComboBox.addItem(animalID)
+		#self.animalComboBox.currentIndexChanged.emit(self.animalComboBox.currentIndex())
 		
 	def get_experiment_selection(self):
 		return self.view.table.selectedIndexes()
@@ -520,41 +407,37 @@ class FileBrowser(QtGui.QWidget):
 		else:
 			self.label_load.setText("Loading colors: "+percentage)
 
-	def on_animal_change(self,index):
-		animalID=self.animalComboBox.itemText(index)
-		experimentInfoList=self.database.get_experimentInfo_list(animal=animalID)
+	def reset_experimentList(self,experimentInfoList):
 		self.model.reset_list(experimentInfoList)
 		self.view.reset_view()
 
-	def closeEvent(self,event):
-		expList=self.model.close()
-		self.database.reverbate_change(expList)
-		self.database.close()
+
 
 #-----------------------------------------------------------------------------------------------------------------------
-if __name__=='__main__':
+#deprecated
+#if __name__=='__main__':
 	
-	from database import Database
-	app=QtGui.QApplication(sys.argv)
+	#from database import Database
+	#app=QtGui.QApplication(sys.argv)
 	
-	#to be able to close wth ctrl+c
-	signal.signal(signal.SIGINT, signal.SIG_DFL)
+	##to be able to close wth ctrl+c
+	#signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-	if QtCore.QDir(ROOT).exists() and QtCore.QDir(BACK_UP).exists():
-		dbName="database_loc-"+ROOT.split('/')[-1]+"_backUP-"+BACK_UP.split('/')[-1]+".db"
-		database=Database(dbName,ROOT,BACK_UP,EXP_PATH,DEFAULT_IMAGE,DATE_TIME_FORMAT,LENGTH_ID)
-	else:
-		print("ROOT or BACK_UP folders not found")
-	if database._open():
-		database.update_tables()
-	else:
-		print("could not open database")
+	#if QtCore.QDir(ROOT).exists() and QtCore.QDir(BACK_UP).exists():
+		#dbName="database_loc-"+ROOT.split('/')[-1]+"_backUP-"+BACK_UP.split('/')[-1]+".db"
+		#database=Database(dbName,ROOT,BACK_UP,EXP_PATH,DEFAULT_IMAGE,DATE_TIME_FORMAT,LENGTH_ID)
+	#else:
+		#print("ROOT or BACK_UP folders not found")
+	#if database._open():
+		#database.update_tables()
+	#else:
+		#print("could not open database")
 
-	win=FileBrowser(database)
-	win.setMinimumSize(1000,600)
+	#win=FileBrowser(database)
+	#win.setMinimumSize(1000,600)
 	
-	#app.aboutToQuit.connect(win.close)
+	##app.aboutToQuit.connect(win.close)
 
-	win.show()
+	#win.show()
 
-	sys.exit(app.exec_())
+	#sys.exit(app.exec_())

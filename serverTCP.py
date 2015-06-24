@@ -1,12 +1,15 @@
-
 import signal
 import sys
 import socket
 
+#Remove Qvariant and all from PyQt (for python2 compatibility)
+import sip
+sip.setapi('QVariant',2)
+sip.setapi('QString',2)
+
 #QT
-import PyQt4.QtCore as PCore
-import PyQt4.QtGui as PGui
-import PyQt4.QtNetwork as PNet
+#import QT
+from PyQt4 import QtCore,QtGui,QtNetwork
 
 from experimentModel import ExperimentModelBase
 
@@ -17,8 +20,8 @@ from parameter import IP_server as IP
 #-------------------------------------------------------------------------------------------------------------------
 #  CLIENT: tcpSocket to communicate with the tcpSocket of ProcessManager.py
 #-------------------------------------------------------------------------------------------------------------------
-class Client(PCore.QObject):
-	hasNewExperiment=PCore.pyqtSignal()
+class Client(QtCore.QObject):
+	hasNewExperiment=QtCore.pyqtSignal()
 	
 	def __init__(self,socket):
 		super(Client,self).__init__()
@@ -29,15 +32,15 @@ class Client(PCore.QObject):
 		self.tcpSocket.readyRead.connect(self.read)
 		
 		#server folder
-		self.server=PCore.QDir(SERVER_PATH)
+		self.server=QtCore.QDir(SERVER_PATH)
 		
 		#Reading data
 		self.blockSize=0
-		self.dataStream=PCore.QDataStream(self.tcpSocket)
-		self.dataStream.setVersion(PCore.QDataStream.Qt_4_0)
+		self.dataStream=QtCore.QDataStream(self.tcpSocket)
+		self.dataStream.setVersion(QtCore.QDataStream.Qt_4_0)
 		
 		#Client infos
-		self.ip=self.tcpSocket..peerAddress().toString()
+		self.ip=self.tcpSocket.peerAddress().toString()
 		self.connected=True
 		
 		#model
@@ -46,14 +49,14 @@ class Client(PCore.QObject):
 		self.expDone=[]
 		
 		#table View
-		self.tableView=PGui.QTableView()
+		self.tableView=QtGui.QTableView()
 		self.tableView.setModel(self.model)
-		self.tableView.horizontalHeader().setResizeMode(PGui.QHeaderView.Stretch)
+		self.tableView.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
 		
 		#frame
-		self.frame=PGui.QGroupBox()
+		self.frame=QtGui.QGroupBox()
 		self.frame.setTitle("Client ip: %s connected:Yes" %self.ip)
-		box=PGui.QVBoxLayout()
+		box=QtGui.QVBoxLayout()
 		box.addWidget(self.tableView)
 		self.frame.setLayout(box)
 		
@@ -65,8 +68,8 @@ class Client(PCore.QObject):
 		
 		#Reading data
 		self.blockSize=0
-		self.dataStream=PCore.QDataStream(self.tcpSocket)
-		self.dataStream.setVersion(PCore.QDataStream.Qt_4_0)
+		self.dataStream=QtCore.QDataStream(self.tcpSocket)
+		self.dataStream.setVersion(QtCore.QDataStream.Qt_4_0)
 		
 		self.frame.setTitle("Client ip: %s connected:Yes" %self.ip)
 		self.connected=True
@@ -157,9 +160,9 @@ class Client(PCore.QObject):
 			self.stateList=[]
 
 	def send_protocol(self,instruction,List=[]):
-		block=PCore.QByteArray()
-		out=PCore.QDataStream(block,PCore.QIODevice.WriteOnly)
-		out.setVersion(PCore.QDataStream.Qt_4_0)
+		block=QtCore.QByteArray()
+		out=QtCore.QDataStream(block,QtCore.QIODevice.WriteOnly)
+		out.setVersion(QtCore.QDataStream.Qt_4_0)
 		out.writeUInt16(0)
 		instr=bytes(instruction,encoding="ascii")
 		out.writeString(instr)
@@ -176,7 +179,7 @@ class Client(PCore.QObject):
 #-------------------------------------------------------------------------------------------------------------------
 # TcpServer: Launch a server
 #-------------------------------------------------------------------------------------------------------------------
-class ServerView(PGui.QGroupBox):
+class ServerView(QtGui.QGroupBox):
 	def __init__(self):
 		super(ServerView,self).__init__()
 		self.setTitle("Server informations")
@@ -188,23 +191,23 @@ class ServerView(PGui.QGroupBox):
 			self.ip=IP
 			
 		self.port=PORT
-		self.host=PNet.QHostAddress(self.ip) 
+		self.host=QtNetwork.QHostAddress(self.ip) 
 
 		self._layout()
 		
 	def _layout(self):
-		self.label_IP=PGui.QLabel("IP: "+str(self.ip))
-		self.label_port=PGui.QLabel("Port: "+str(self.port))
+		self.label_IP=QtGui.QLabel("IP: "+str(self.ip))
+		self.label_port=QtGui.QLabel("Port: "+str(self.port))
 		
-		self.button_listen=PGui.QPushButton("\n Accepts new clients \n")
+		self.button_listen=QtGui.QPushButton("\n Accepts new clients \n")
 		self.button_listen.setCheckable(True)
 		
-		labelLayout = PGui.QHBoxLayout()
+		labelLayout = QtGui.QHBoxLayout()
 		labelLayout.addWidget(self.label_IP)
 		labelLayout.addSpacing(20)
 		labelLayout.addWidget(self.label_port)
 		
-		vbox= PGui.QVBoxLayout()
+		vbox= QtGui.QVBoxLayout()
 		vbox.addLayout(labelLayout)
 		vbox.addWidget(self.button_listen)
 		vbox.setContentsMargins(10,10,10,10)
@@ -215,20 +218,20 @@ class ServerView(PGui.QGroupBox):
 #-------------------------------------------------------------------------------------------------------------------
 # console output
 #--------------------------------------------------------------------------------------------------------
-class ConsoleView(PGui.QGroupBox):
+class ConsoleView(QtGui.QGroupBox):
 	def __init__(self):
 		super(ConsoleView,self).__init__()
 		
 		#output
-		self.output=PGui.QTextEdit()
+		self.output=QtGui.QTextEdit()
 		self.output.setReadOnly(True)
 
 		#buttons
-		self.button_clear=PGui.QPushButton("Clear output")
+		self.button_clear=QtGui.QPushButton("Clear output")
 		self.button_clear.clicked.connect(self.output.clear)
 		
 		#Layout
-		vbox=PGui.QVBoxLayout()
+		vbox=QtGui.QVBoxLayout()
 		vbox.addWidget(self.output)
 		vbox.addWidget(self.button_clear)
 		self.setLayout(vbox)
@@ -251,34 +254,34 @@ class ConsoleView(PGui.QGroupBox):
 #-------------------------------------------------------------------------------------------------------------------
 # Process View-- Table: ClientIP, Connected, filename, state 
 #--------------------------------------------------------------------------------------------------------
-class ProcessView(PGui.QWidget):
+class ProcessView(QtGui.QWidget):
 	def __init__(self):
 		super(ProcessView,self).__init__()
 		
 		#TCP Server
-		self.server=PNet.QTcpServer(self)
+		self.server=QtNetwork.QTcpServer(self)
 		self.server.newConnection.connect(self.new_connection)
 		
 		#Keep track of client and progress
 		self.clientDict={}  #clientDict[ip]=Client(object)
 		
 		#Process
-		self.process=PCore.QProcess()
+		self.process=QtCore.QProcess()
 		self.process.finished.connect(self.try_process)
 		self.process.finished.connect(self.try_sync)
 		self.wasKill=False
-		self.process.setProcessChannelMode(PCore.QProcess.MergedChannels)
+		self.process.setProcessChannelMode(QtCore.QProcess.MergedChannels)
 
 		self.currentClient=None
 		
 		#Transfer
-		self.processSync=PCore.QProcess()
+		self.processSync=QtCore.QProcess()
 		self.processSync.finished.connect(self.try_sync)
 		self.processSync.finished.connect(self.try_process)
 		self.currentClientSync=None
 		
 		#dealing with the klusta environment
-		env = PCore.QProcess.systemEnvironment()
+		env = QtCore.QProcess.systemEnvironment()
 		itemToReplace=[item for item in env if item.startswith('PATH=')]
 		for item in itemToReplace:
 			newitem=item.replace('/anaconda/bin:','/anaconda/envs/klusta/bin:')
@@ -288,15 +291,15 @@ class ProcessView(PGui.QWidget):
 		self.process.setEnvironment(env)
 		
 		#buttons and label
-		self.button_kill=PGui.QPushButton("Kill current")
+		self.button_kill=QtGui.QPushButton("Kill current")
 		self.button_kill.clicked.connect(self.kill_current)
-		self.button_clear=PGui.QPushButton("Clear")
+		self.button_clear=QtGui.QPushButton("Clear")
 		self.button_clear.clicked.connect(self.clear)
-		self.label_path=PGui.QLabel(SERVER_PATH)
+		self.label_path=QtGui.QLabel(SERVER_PATH)
 		
 		#Client tables
-		self.vboxClient=PGui.QVBoxLayout()
-		self.vboxClient.setAlignment(PCore.Qt.AlignTop)
+		self.vboxClient=QtGui.QVBoxLayout()
+		self.vboxClient.setAlignment(QtCore.Qt.AlignTop)
 		self.vboxClient.addWidget(self.label_path)
 		self.vboxClient.addWidget(self.button_kill)
 		self.vboxClient.addWidget(self.button_clear)
@@ -357,7 +360,7 @@ class ProcessView(PGui.QWidget):
 
 	def try_process(self,exitcode=0):
 		#if there is not already a transfer running
-		if self.process.state()==PCore.QProcess.Running:
+		if self.process.state()==QtCore.QProcess.Running:
 			return
 		else:
 			if self.wasKill:
@@ -394,7 +397,7 @@ class ProcessView(PGui.QWidget):
 
 	def try_sync(self,exitcode=None):
 		#if there is not already a transfer running
-		if self.processSync.state()==PCore.QProcess.Running:
+		if self.processSync.state()==QtCore.QProcess.Running:
 			return
 		else:
 			if self.currentClientSync!=None:
@@ -425,7 +428,7 @@ class ProcessView(PGui.QWidget):
 #-------------------------------------------------------------------------------------------------------------------
 # Main Window: manages view
 #-------------------------------------------------------------------------------------------------------------------
-class MainWindow(PGui.QWidget):
+class MainWindow(QtGui.QWidget):
 	def __init__(self):
 		super(MainWindow,self).__init__()
 
@@ -444,8 +447,8 @@ class MainWindow(PGui.QWidget):
 		WIDTH=800
 		HEIGHT=600
 		
-		group=PGui.QWidget()
-		vbox=PGui.QVBoxLayout()
+		group=QtGui.QWidget()
+		vbox=QtGui.QVBoxLayout()
 		vbox.addWidget(self.serverView)
 		vbox.addWidget(self.processView.console)
 		group.setLayout(vbox)
@@ -453,13 +456,13 @@ class MainWindow(PGui.QWidget):
 		group.setMinimumSize(WIDTH/2 -20,HEIGHT-20)
 		self.processView.setMinimumSize(WIDTH/2 -20,HEIGHT-20)
 		
-		splitter=PGui.QSplitter(PCore.Qt.Horizontal)
+		splitter=QtGui.QSplitter(QtCore.Qt.Horizontal)
 		splitter.setChildrenCollapsible(False)
 		
 		splitter.addWidget(self.processView)
 		splitter.addWidget(group)
 		
-		vbox=PGui.QVBoxLayout()
+		vbox=QtGui.QVBoxLayout()
 		vbox.addWidget(splitter)
 		
 		self.setLayout(vbox)
@@ -467,16 +470,16 @@ class MainWindow(PGui.QWidget):
 		self.setWindowTitle("Server TCP + Process running")
 		
 	def display_output(self):
-		byteArray=self.processView.processreadAll()
-		string=str(byteArray,encoding='ascii')
-		self.processView.console.display(lines)
+		byteArray=self.processView.process.readAll()
+		string="".join(byteArray)
+		self.console.display(string)
 
 	def listen(self,checked):
 		if checked:
 			host=self.serverView.host
 			port=self.serverView.port
 			if not self.processView.server.listen(address=host,port=port):
-				PGui.QMessageBox.critical(self,"Server","Unable to start server. Maybe it's already running")
+				QtGui.QMessageBox.critical(self,"Server","Unable to start server. Maybe it's already running")
 				self.close()
 				return
 		else:
@@ -485,14 +488,14 @@ class MainWindow(PGui.QWidget):
 			
 	def closeEvent(self,event):
 		#check if is running
-		if self.processView.process.state()==PCore.QProcess.Running or self.processView.processSync.state()==PCore.QProcess.Running :
-			msgBox = PGui.QMessageBox()
+		if self.processView.process.state()==QtCore.QProcess.Running or self.processView.processSync.state()==QtCore.QProcess.Running :
+			msgBox = QtGui.QMessageBox()
 			msgBox.setText("Closing the app")
 			msgBox.setInformativeText("A process or transfer is running, are you sure you want to quit ? The process or transfer will be killed")
-			msgBox.setStandardButtons(PGui.QMessageBox.Yes | PGui.QMessageBox.Cancel)
-			msgBox.setDefaultButton(PGui.QMessageBox.Cancel)
+			msgBox.setStandardButtons(QtGui.QMessageBox.Yes | QtGui.QMessageBox.Cancel)
+			msgBox.setDefaultButton(QtGui.QMessageBox.Cancel)
 			answer = msgBox.exec_()
-			if answer==PGui.QMessageBox.Cancel:
+			if answer==QtGui.QMessageBox.Cancel:
 				event.ignore()
 				return
 		self.processView.close()
@@ -501,17 +504,17 @@ class MainWindow(PGui.QWidget):
 			
 
 if __name__=='__main__':
-	PGui.QApplication.setStyle("cleanlooks")
-	app = PGui.QApplication(sys.argv)
+	QtGui.QApplication.setStyle("cleanlooks")
+	app = QtGui.QApplication(sys.argv)
 	
-	nas=PCore.QDir(NAS_PATH)
-	server=PCore.QDir(SERVER_PATH)
+	nas=QtCore.QDir(NAS_PATH)
+	server=QtCore.QDir(SERVER_PATH)
 	if not nas.exists():
-		msgBox=PGui.QMessageBox()
+		msgBox=QtGui.QMessageBox()
 		msgBox.setText("NAS_PATH do not refers to a folder: "+str(NAS_PATH))
 		msgBox.exec_()
 	elif not server.exists():
-		msgBox=PGui.QMessageBox()
+		msgBox=QtGui.QMessageBox()
 		msgBox.setText("SERVER_PATH do not refers to a folder: "+str(SERVER_PATH))
 		msgBox.exec_()
 	else:

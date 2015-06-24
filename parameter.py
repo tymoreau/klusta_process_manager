@@ -42,8 +42,8 @@ EXP_PATH="/Experiments"
 #------------------------------------------------------------------------------------------
 
 #Rsync arguments | -a=archive (recursive, update permission and timestamp, keep symlink...) -u=update (do not downgrade files)
-RSYNC_ARG="-au"
-
+RSYNC_ARG_TO_BACKUP="-au"
+RSYNC_ARG_FROM_BACKUP="-au"
 
 #------------------------------------------------------------------------------------------
 #    Console

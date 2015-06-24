@@ -1,18 +1,13 @@
-import sys
-
+#import QT
 import sip
 sip.setapi('QVariant',2)
 sip.setapi('QString',2)
-
-import PyQt4.QtCore as PCore
-import PyQt4.QtGui as PGui
-import PyQt4.QtSql as PSql
-
+from PyQt4 import QtCore,QtSql
 
 class Database(object):
 	
 	def __init__(self,name,localPath,backUPPath,expPath,defaultImage,dateTimeFormat,lengthID):
-		self.db=PSql.QSqlDatabase.addDatabase("QSQLITE","SQLITE")
+		self.db=QtSql.QSqlDatabase.addDatabase("QSQLITE","SQLITE")
 		self.db.setDatabaseName(name)
 
 		self.localPath=localPath
@@ -53,10 +48,10 @@ class Database(object):
 #--------------------------------------------------------------------------------------------------------- 
 	#Update table Animal to match content of root folder
 	def update_animals_from_root(self,root):
-		rootFolder=PCore.QDir(root)
+		rootFolder=QtCore.QDir(root)
 		animalList=self.get_animalID_list()
 		# Add new folders
-		for folder in rootFolder.entryList(["no file"],PCore.QDir.AllDirs|PCore.QDir.NoDotAndDotDot):
+		for folder in rootFolder.entryList(["no file"],QtCore.QDir.AllDirs|QtCore.QDir.NoDotAndDotDot):
 			if str(folder[-self.lengthID:]).isdigit():
 				if folder in animalList:
 					animalList.remove(folder)
@@ -70,8 +65,11 @@ class Database(object):
 
 	#Add an entry to table Animal
 	def add_animal(self,folderName,animalPathLocal):
-		query=PSql.QSqlQuery(self.db)
-		animalPathBackUP=self.look_for_folder(folderName,self.backUPPath)
+		query=QtSql.QSqlQuery(self.db)
+		animalPathBackUP=self.backUPPath+"/"+folderName
+		if not QtCore.QDir(animalPathBackUP).exists():
+			animalPathBackUP="unknown"
+		
 		query.prepare("Insert into Animal(animalID,animalType,ID,pathLocal,pathBackUP,pathToExp) Values (:animalID,:animalType,:ID,:pathLocal,:pathBackUP,:pathToExp)")
 		query.bindValue(":animalID",folderName)
 		query.bindValue(":animalType",folderName[:-self.lengthID])
@@ -87,21 +85,11 @@ class Database(object):
 		self.db.exec_("Delete From Animal Where animalID='%s'"%animalID)
 		self.db.exec_("Delete From Experiment Where animalID='%s'"%animalID)
 
-	#Look for a specific folder given a root path
-	#Do not look in subfolders
-	def look_for_folder(self,folderName,root):
-		rootFolder=PCore.QDir(root)
-		for folder in rootFolder.entryList(["no file"],PCore.QDir.AllDirs|PCore.QDir.NoDotAndDotDot):
-			if folder==folderName:
-				return rootFolder.filePath(folder)
-		return "unknown"
-
-
 #---------------------------------------------------------------------------------------------------------
 # Get lists
 #--------------------------------------------------------------------------------------------------------- 
 	def get_animalID_list(self,notEmpty=False):
-		query=PSql.QSqlQuery(self.db)
+		query=QtSql.QSqlQuery(self.db)
 		if notEmpty:
 			query.exec_("Select animalID from Animal Where (Select count(folderName) From Experiment Where Experiment.animalID=Animal.animalId)>0")
 		else:
@@ -112,7 +100,7 @@ class Database(object):
 		return l
 
 	def get_experiment_list(self,animal=None):
-		query=PSql.QSqlQuery(self.db)
+		query=QtSql.QSqlQuery(self.db)
 		if animal==None:
 			query.exec_("Select folderName from Experiment")
 		else:
@@ -123,7 +111,7 @@ class Database(object):
 		return l
 
 	def get_experimentInfo_list(self,animal=None):
-		query=PSql.QSqlQuery(self.db)
+		query=QtSql.QSqlQuery(self.db)
 		if animal==None:
 			query.exec_("Select * from Experiment")
 		else:
@@ -138,7 +126,7 @@ class Database(object):
 #---------------------------------------------------------------------------------------------------------
 	def update_experiments(self):
 		expList=self.get_experiment_list()
-		query=PSql.QSqlQuery(self.db)
+		query=QtSql.QSqlQuery(self.db)
 		#For each animal, get folder "Experiments" (self.expPath)
 		query.exec_("Select pathLocal,pathToExp,animalID,pathBackUP from Animal")
 		#add new folders
@@ -146,8 +134,8 @@ class Database(object):
 			path=str(query.value(0))+str(query.value(1))
 			animalID=query.value(2)
 			pathBackUPAnimal=str(query.value(3))+str(query.value(1))
-			animalExpFolder=PCore.QDir(path)
-			for folder in animalExpFolder.entryList(["no file"],PCore.QDir.AllDirs|PCore.QDir.NoDotAndDotDot):
+			animalExpFolder=QtCore.QDir(path)
+			for folder in animalExpFolder.entryList(["no file"],QtCore.QDir.AllDirs|QtCore.QDir.NoDotAndDotDot):
 				if folder in expList:
 					expList.remove(folder)
 				elif folder.startswith(animalID):
@@ -163,13 +151,13 @@ class Database(object):
 		if len(nameSplit)!=6:
 			return
 		date="_".join(nameSplit[1:])
-		if not PCore.QDateTime().fromString(date,self.dateTimeFormat).isValid():
+		if not QtCore.QDateTime().fromString(date,self.dateTimeFormat).isValid():
 			return
-		if PCore.QDir(pathBackUPAnimal).exists(folder):
-			expPathBackUP=PCore.QDir(pathBackUPAnimal).filePath(folder)
+		if QtCore.QDir(pathBackUPAnimal).exists(folder):
+			expPathBackUP=QtCore.QDir(pathBackUPAnimal).filePath(folder)
 		else:
 			expPathBackUP="unknown"
-		query=PSql.QSqlQuery(self.db)
+		query=QtSql.QSqlQuery(self.db)
 		query.prepare("Insert into Experiment(folderName, dateTime, animalID, image, pathLocal, pathBackUP) Values (:folderName, :dateTime, :animalID, :image, :pathLocal, :pathBackUP)")
 		query.bindValue(":folderName",folder)
 		query.bindValue(":dateTime",date)
@@ -187,13 +175,17 @@ class Database(object):
 		self.db.transaction()
 		for exp in expList:
 			if exp.hasChange:
-				self.db.exec_("Update Experiment SET image='%s' Where folderName='%s'"%(exp.image,exp.folderName))
+				self.db.exec_("Update Experiment SET image='%s' Where folderName='%s'"%(exp.folder.image,exp.folderName))
+				self.db.exec_("Update Experiment SET pathBackUP='%s' Where folderName='%s'"%(exp.pathBackUP,exp.folderName))
 		self.db.commit()
 
 #---------------------------------------------------------------------------------------------------------
 if __name__=='__main__':
-	PGui.QApplication.setStyle("plastique")
-	app=PGui.QApplication(sys.argv)
+	from PyQt4 import QtGui
+	import sys
+	
+	QtGui.QApplication.setStyle("plastique")
+	app=QtGui.QApplication(sys.argv)
 	
 	localPath="/home/david/NAS02"
 	backUPPath="/home/david/NAS02"
@@ -202,7 +194,7 @@ if __name__=='__main__':
 	dateTimeFormat="yyyy_MM_dd_HH_mm"
 	lengthID=3
 
-	if PCore.QDir(localPath).exists() and PCore.QDir(backUPPath).exists():
+	if QtCore.QDir(localPath).exists() and QtCore.QDir(backUPPath).exists():
 		name="database_loc-"+localPath.split('/')[-1]+"_backUP-"+backUPPath.split('/')[-1]+".db"
 		print("name=",name)
 		database=Database(name,localPath,backUPPath,expPath,defaultImage,dateTimeFormat,lengthID)
