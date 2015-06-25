@@ -124,7 +124,7 @@ class ProcessManager(QtGui.QWidget):
 		self.button_connectServer.clicked.connect(self.connect_to_server)
 		self.button_processServer=QtGui.QPushButton("\nProcess on server\n (klusta) \n")
 		#self.button_processServer.clicked.connect(self.process_server)
-		self.button_processServer.setToolTip("Sync to NAS the selected experiments and then ask server to process them - Sync back from NAS to local when done")
+		self.button_processServer.setToolTip("Back up, process on server, Sync from back up")
 
 		#sync
 		self.button_backUP=QtGui.QPushButton("Back UP")

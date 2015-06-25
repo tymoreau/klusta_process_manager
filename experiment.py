@@ -26,7 +26,7 @@ class Experiment(QtCore.QObject):
 		
 		#Information contained in database
 		self.folderName=expInfoDict["folderName"]
-		image=expInfoDict["image"]
+		icon=expInfoDict["icon"]
 		self.pathBackUP=expInfoDict["pathBackUP"]
 		self.pathLocal=expInfoDict["pathLocal"]
 		self.animalID=expInfoDict["animalID"]
@@ -42,14 +42,11 @@ class Experiment(QtCore.QObject):
 			return
 		
 		#Local folder
-		self.folder=KlustaFolder(self.pathLocal,image)
+		self.folder=KlustaFolder(self.pathLocal,icon)
 		if not self.folder.exists():
 			self.state="could not find folder %s"%self.pathLocal
 			self.isValid=False
 			return
-		
-		#FileBrowser related
-		self.colorDone=False  # True = no need to recompute color
 		
 		#BackUP folder
 		self.backUPFolder=KlustaFolder(self.pathBackUP)
@@ -77,13 +74,12 @@ class Experiment(QtCore.QObject):
 		self.time=self.dateTime.toString(" hh:mm ")
 		return True
 
-	#Automaticaly find a color for the folder
-	def reset_folder_image(self):
-		previousImage=self.folder.image
-		self.folder.reset_image()
-		if self.folder.image!=previousImage:
+	#Automaticaly find a icon for the folder
+	def reset_folder_icon(self):
+		previousIcon=self.folder.icon
+		self.folder.reset_icon()
+		if self.folder.icon!=previousIcon:
 			self.hasChange=True
-		self.colorDone=True
 
 	def refresh_state(self):
 		if not self.backUPFolder.exists():

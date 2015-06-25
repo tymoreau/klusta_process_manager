@@ -1,19 +1,16 @@
 import sys
 import signal
-import time
 
-#Remove Qvariant and all from PyQt (for python2 compatibility)
+#QT
 import sip
 sip.setapi('QVariant',2)
 sip.setapi('QString',2)
-
-#import QT
 from PyQt4 import QtCore,QtGui
 
-#-----------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
 # Worker: Runs continuously in a separate thread
 # Can do differents method / method can be interrupt by new method call
-#-----------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
 class Worker(QtCore.QObject):
 	valueChanged=QtCore.pyqtSignal(int)
 	folderDone=QtCore.pyqtSignal(int)
@@ -38,8 +35,8 @@ class Worker(QtCore.QObject):
 				return
 			method=self._method
 			self.mutex.unlock()
-			if method=="color_folder":
-				self.doMethod_color_folder()
+			if method=="icon_folder":
+				self.doMethod_icon_folder()
 	
 	def requestMethod(self,method,arg=None):
 		locker=QtCore.QMutexLocker(self.mutex)
@@ -48,9 +45,8 @@ class Worker(QtCore.QObject):
 		self._arg=arg
 		self.condition.wakeOne()
 
-	def doMethod_color_folder(self):
+	def doMethod_icon_folder(self):
 		expList=self._arg
-		expList=[exp for exp in expList if not exp.colorDone]
 		i=0
 		s=len(expList)
 		for exp in expList:
@@ -61,7 +57,7 @@ class Worker(QtCore.QObject):
 			if abort or interrupt:
 				self.valueChanged.emit(100)
 				break
-			exp.reset_folder_image()
+			exp.reset_folder_icon()
 			self.folderDone.emit(i)
 			i+=1
 			self.valueChanged.emit(i*100.0/s)
@@ -71,9 +67,9 @@ class Worker(QtCore.QObject):
 		self._abort=True
 		self.condition.wakeOne()
 	
-#-----------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
 # Model
-#-----------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
 class Model(QtCore.QAbstractTableModel):
 
 	def __init__(self,delegate=None,parent=None):
@@ -87,7 +83,7 @@ class Model(QtCore.QAbstractTableModel):
 		self.thread.started.connect(self.worker.mainLoop)
 		self.thread.finished.connect(self.deleteLater)
 		self.thread.start()
-		self.worker.folderDone.connect(self.color_done)
+		self.worker.folderDone.connect(self.icon_done)
 		self.worker.finished.connect(self.thread.quit)
 		
 		#list of current experiments to display
@@ -102,18 +98,18 @@ class Model(QtCore.QAbstractTableModel):
 	def columnCount(self,QModelIndex):
 		return 4
 
-	def color_done(self,row):
+	def icon_done(self,row):
 		idx=self.index(row,3)
 		self.dataChanged.emit(idx,idx)
-		
+
 	def reset_list(self,expList):
 		self.beginResetModel()
 		expList.sort()
-		self.experimentList=expList
+		self.experimentList=expList[:]
 		self.reset_horizontal_lines()
+		self.worker.requestMethod("icon_folder",self.experimentList)
 		self.endResetModel()
-		self.worker.requestMethod("color_folder",self.experimentList)
-		
+
 	#To draw horizontal line according to date
 	def reset_horizontal_lines(self):
 		listDate=[exp.dateTime for exp in self.experimentList]
@@ -138,7 +134,7 @@ class Model(QtCore.QAbstractTableModel):
 				return self.experimentList[row].folderName
 		if role==QtCore.Qt.DecorationRole:
 			if col==3:
-				return QtGui.QIcon(self.experimentList[row].folder.image)
+				return QtGui.QIcon(self.experimentList[row].folder.icon)
 
 	def flags(self,index):
 		if index.column()==3:
@@ -152,12 +148,21 @@ class Model(QtCore.QAbstractTableModel):
 	def createFiles_onSelection(self,selection,prmModel,prbModel):
 		for index in selection:
 			self.experimentList[index.row()].folder.create_files(prmModel=prmModel,prbModel=prbModel)
+			self.experimentList[index.row()].reset_folder_icon()
+		self.dataChanged.emit(selection[0],selection[-1])
 
-#-----------------------------------------------------------------------------------------------------------------------
+	def update_exp(self,exp):
+		if exp in self.experimentList:
+			row=self.experimentList.index(exp)
+			index=self.index(row,3)
+			self.dataChanged.emit(index,index)
+			
+		
+#---------------------------------------------------------------------------------------------------
 # Delegate
-#-----------------------------------------------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------------------
 class TableDelegate(QtGui.QStyledItemDelegate):
-	#colors=QtGui.QColor.colorNames()
+	#icons=QtGui.QIcon.iconNames()
 	
 	def __init__(self,parent=None):
 		super(TableDelegate,self).__init__(parent)
@@ -245,9 +250,9 @@ class TableDelegate(QtGui.QStyledItemDelegate):
 			option.rect.translate(0,rowHeight)
 			painter.drawText(option.rect,QtCore.Qt.AlignVCenter,index.data())
 
-#-----------------------------------------------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------------
 # View (+fileSystemModel)
-#-----------------------------------------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------
 class View_Folders(QtGui.QWidget):
 
 	def __init__(self,model,parent=None):
@@ -262,7 +267,7 @@ class View_Folders(QtGui.QWidget):
 		vbar=self.table.verticalScrollBar()
 		self.table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
 		self.table.setModel(model)
-		self.table.connect(self.table.selectionModel(),QtCore.SIGNAL("selectionChanged(QItemSelection, QItemSelection)"),self.on_selection_change)
+		self.table.selectionModel().selectionChanged.connect(self.on_selection_changed)
 
 		#ListFile (contents of one experiment folder)
 		self.listFile=QtGui.QTreeView(self)
@@ -287,7 +292,7 @@ class View_Folders(QtGui.QWidget):
 		self.listFile.update()
 		
 	#User clicked on one folder
-	def on_selection_change(self,selected,deselected):
+	def on_selection_changed(self,selected,deselected):
 		if len(selected.indexes())==0:
 			if len(self.table.selectedIndexes())==0:
 				self.listFile.hide()
@@ -319,9 +324,9 @@ class View_Folders(QtGui.QWidget):
 		length=he.sectionSize(0)+he.sectionSize(1)+he.sectionSize(2)+he.sectionSize(3)
 		self.table.setMaximumWidth(length+10)
 
-#-----------------------------------------------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------------------------
 # FileBrowser Widget
-#-----------------------------------------------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------------------------
 class FileBrowser(QtGui.QWidget):
 	
 	def __init__(self,parent=None):
@@ -338,7 +343,7 @@ class FileBrowser(QtGui.QWidget):
 		self.view.table.setItemDelegate(self.delegate)
 		
 		#button 
-		self.button_add=QtGui.QPushButton(QtGui.QIcon("images/downarrow.png")," ")
+		self.button_add=QtGui.QPushButton(QtGui.QIcon("icons/downarrow.png")," ")
 		self.button_createFiles=QtGui.QPushButton("Create prm/prb")
 		self.button_createFiles.clicked.connect(self.createFiles)
 		self.button_createFiles.setEnabled(False)
@@ -372,7 +377,6 @@ class FileBrowser(QtGui.QWidget):
 	def set_animalComboBox(self,animalList):
 		for animalID in animalList:
 			self.animalComboBox.addItem(animalID)
-		#self.animalComboBox.currentIndexChanged.emit(self.animalComboBox.currentIndex())
 		
 	def get_experiment_selection(self):
 		return self.view.table.selectedIndexes()
@@ -405,39 +409,10 @@ class FileBrowser(QtGui.QWidget):
 		if i==100:
 			self.label_load.setText("")
 		else:
-			self.label_load.setText("Loading colors: "+percentage)
+			self.label_load.setText("Loading icons: "+percentage)
 
 	def reset_experimentList(self,experimentInfoList):
 		self.model.reset_list(experimentInfoList)
 		self.view.reset_view()
 
 
-
-#-----------------------------------------------------------------------------------------------------------------------
-#deprecated
-#if __name__=='__main__':
-	
-	#from database import Database
-	#app=QtGui.QApplication(sys.argv)
-	
-	##to be able to close wth ctrl+c
-	#signal.signal(signal.SIGINT, signal.SIG_DFL)
-
-	#if QtCore.QDir(ROOT).exists() and QtCore.QDir(BACK_UP).exists():
-		#dbName="database_loc-"+ROOT.split('/')[-1]+"_backUP-"+BACK_UP.split('/')[-1]+".db"
-		#database=Database(dbName,ROOT,BACK_UP,EXP_PATH,DEFAULT_IMAGE,DATE_TIME_FORMAT,LENGTH_ID)
-	#else:
-		#print("ROOT or BACK_UP folders not found")
-	#if database._open():
-		#database.update_tables()
-	#else:
-		#print("could not open database")
-
-	#win=FileBrowser(database)
-	#win.setMinimumSize(1000,600)
-	
-	##app.aboutToQuit.connect(win.close)
-
-	#win.show()
-
-	#sys.exit(app.exec_())

@@ -126,7 +126,7 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 		col=index.column()
 		if role==QtCore.Qt.DisplayRole:
 			if col==0:
-				#print(self.experimentList[row].name, self.experimentList[row].state)        #display name,state to debug
+				#print(self.experimentList[row].name, self.experimentList[row].state)
 				return self.experimentList[row].folderName
 			if col==1:
 				return self.experimentList[row].state
@@ -214,6 +214,7 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 				else:
 					self.toProcess.append(exp)
 					exp.state="waiting to be processed"
+				
 				self.isCheckable.remove(exp)
 		self.checkList=[]
 		self.updateCheck()

@@ -32,7 +32,7 @@ TITLE="FileBrowser + Process Manager"
 #    FileBrowser     
 #------------------------------------------------------------------------------------------
 
-DEFAULT_IMAGE="/images/folder-grey.png"
+DEFAULT_ICON="/images/folder-grey.png"
 LENGTH_ID=3
 DATE_TIME_FORMAT="yyyy_MM_dd_HH_mm"
 EXP_PATH="/Experiments"

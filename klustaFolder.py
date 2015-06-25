@@ -10,7 +10,7 @@ from parameter import PROGRAM
 #------------------------------------------------------------------------------------------------------------
 class KlustaFolder(QtCore.QDir):
 	
-	def __init__(self,path,image=None):
+	def __init__(self,path,icon=None):
 		self.path=str(path)
 		super(KlustaFolder,self).__init__(self.path)
 		self.state="--"
@@ -21,18 +21,20 @@ class KlustaFolder(QtCore.QDir):
 		self.rawData=QtCore.QFileInfo()
 		self.prb=QtCore.QFileInfo()
 		
-		self.image=image
+		self.icon=icon
 		self.program=PROGRAM
 		
-	def reset_image(self):
+	def reset_icon(self):
 		if len(self.entryList())==0:
-			self.image="images/folder-grey.png"
+			self.icon="icons/folder-grey.png"
 		elif len(self.entryList(['*.kwik']))>0:
-			self.image="images/folder-violet.png"
+			self.icon="icons/folder-violet.png"
 		elif len(self.entryList(['*.dat','*.raw.kwd']))>0:
-			self.image="images/folder-green.png"
+			self.icon="icons/folder-green.png"
+			if self.exists(self.name+".prm") and self.exists(self.name+".prb"):
+				self.icon="icons/folder-green-star.png"
 		else:
-			self.image="images/folder-blue.png"
+			self.icon="icons/folder-blue.png"
 		
 	#not use
 	def set_files(self,prmName,rawDataName,prbName):
@@ -203,7 +205,7 @@ class KlustaFolder(QtCore.QDir):
 			process.waitForStarted()
 			if process.state()==QtCore.QProcess.Running:
 				self.state="klusta running"
-				#self.image= ? + send message to fileBrowser
+				#self.icon= ? + send message to fileBrowser
 			else: #if process.error()==QtCore.QProcess.FailedToStart:
 				self.state="failed to start program:%s"%PROGRAM
 				process.kill()

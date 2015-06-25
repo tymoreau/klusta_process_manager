@@ -34,7 +34,7 @@ class Database(object):
 					self.db.exec_("Drop table %s"%table)
 				#Create tables
 				self.db.exec_("create table Animal(animalID TEXT PRIMARY KEY UNIQUE, animalType TEXT, ID INT, pathLocal TEXT UNIQUE, pathBackUP TEXT UNIQUE, pathToExp TEXT)")
-				self.db.exec_("create table Experiment(folderName TEXT PRIMARY KEY UNIQUE, dateTime TEXT, animalID TEXT, image TEXT, pathLocal TEXT UNIQUE, pathBackUP TEXT, FOREIGN KEY(animalID) REFERENCES Animal(animalID))")
+				self.db.exec_("create table Experiment(folderName TEXT PRIMARY KEY UNIQUE, dateTime TEXT, animalID TEXT, icon TEXT, pathLocal TEXT UNIQUE, pathBackUP TEXT, FOREIGN KEY(animalID) REFERENCES Animal(animalID))")
 				
 		self.db.transaction()
 		#Update table animal
@@ -118,7 +118,7 @@ class Database(object):
 			query.exec_("Select * from Experiment Where animalID='%s'"%animal)
 		l=[]
 		while query.next():
-			l.append({"folderName":query.value(0), "dateTime":query.value(1), "animalID":query.value(2), "image":query.value(3), "pathLocal":query.value(4), "pathBackUP":query.value(5)})
+			l.append({"folderName":query.value(0), "dateTime":query.value(1), "animalID":query.value(2), "icon":query.value(3), "pathLocal":query.value(4), "pathBackUP":query.value(5)})
 		return l
 
 #--------------------------------------------------------------------------------------------------------- 
@@ -158,11 +158,11 @@ class Database(object):
 		else:
 			expPathBackUP="unknown"
 		query=QtSql.QSqlQuery(self.db)
-		query.prepare("Insert into Experiment(folderName, dateTime, animalID, image, pathLocal, pathBackUP) Values (:folderName, :dateTime, :animalID, :image, :pathLocal, :pathBackUP)")
+		query.prepare("Insert into Experiment(folderName, dateTime, animalID, icon, pathLocal, pathBackUP) Values (:folderName, :dateTime, :animalID, :icon, :pathLocal, :pathBackUP)")
 		query.bindValue(":folderName",folder)
 		query.bindValue(":dateTime",date)
 		query.bindValue(":animalID",animalID)
-		query.bindValue(":image",self.defaultImage)
+		query.bindValue(":icon",self.defaultImage)
 		query.bindValue(":pathLocal",expPathLocal)
 		query.bindValue(":pathBackUP",expPathBackUP)
 		query.exec_()
@@ -175,7 +175,7 @@ class Database(object):
 		self.db.transaction()
 		for exp in expList:
 			if exp.hasChange:
-				self.db.exec_("Update Experiment SET image='%s' Where folderName='%s'"%(exp.folder.image,exp.folderName))
+				self.db.exec_("Update Experiment SET icon='%s' Where folderName='%s'"%(exp.folder.icon,exp.folderName))
 				self.db.exec_("Update Experiment SET pathBackUP='%s' Where folderName='%s'"%(exp.pathBackUP,exp.folderName))
 		self.db.commit()
 
@@ -190,7 +190,7 @@ if __name__=='__main__':
 	localPath="/home/david/NAS02"
 	backUPPath="/home/david/NAS02"
 	expPath="/Experiments"
-	defaultImage="images/folder-grey.png"
+	defaultImage="icons/folder-grey.png"
 	dateTimeFormat="yyyy_MM_dd_HH_mm"
 	lengthID=3
 

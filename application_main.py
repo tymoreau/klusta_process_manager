@@ -91,17 +91,14 @@ class MainWindow(QtGui.QWidget):
 	def on_directory_change(self,path):
 		if path==ROOT:
 			print(ROOT, "has changed")
-			pass
 			#check for new/deleted animal (database + list)
 		else:
 			folderName=QtCore.QFileInfo(path).fileName()
 			if folderName in self.experimentDict:
-				pass
-				#print(folderName,"has changed")
-				#self.experimentDict[folderName].update()
+				self.experimentDict[folderName].reset_folder_icon()
+				self.fileBrowser.model.update_exp(self.experimentDict[folderName])
 			elif folderName in self.animalFolderList:
-				pass
-				#print(folderName,"has change")
+				print(folderName,"has changed")
 				#add/remove exp (database+dict)
 		
 	def on_animal_change(self,index):
@@ -161,7 +158,7 @@ if __name__ == '__main__':
 		
 		#Create database class
 		dbName="database_loc-"+ROOT.split('/')[-1]+"_backUP-"+BACK_UP.split('/')[-1]+".db"
-		database=Database(dbName,ROOT,BACK_UP,EXP_PATH,DEFAULT_IMAGE,DATE_TIME_FORMAT,LENGTH_ID)
+		database=Database(dbName,ROOT,BACK_UP,EXP_PATH,DEFAULT_ICON,DATE_TIME_FORMAT,LENGTH_ID)
 
 		if database._open():
 			#Update/create database
