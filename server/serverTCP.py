@@ -2,205 +2,42 @@ import signal
 import sys
 import socket
 
-#Remove Qvariant and all from PyQt (for python2 compatibility)
+#QT
 import sip
 sip.setapi('QVariant',2)
 sip.setapi('QString',2)
-
-#QT
-#import QT
 from PyQt4 import QtCore,QtGui,QtNetwork
 
-from experimentModel import ExperimentModelBase
+from experiment import Experiment
+from consoleView import ConsoleView
 
 #parameters
-from parameter import SERVER_PATH, NAS_PATH, PROGRAM, PORT, SEPARATOR
-from parameter import IP_server as IP
+SERVER_PATH="./test/dataServer"
+NAS_PATH="./test/fakeNAS"
+PROGRAM="klusta"
+PORT=8000
+SEPARATOR="---"*10
+IP="127.0.0.1"
 
-#-------------------------------------------------------------------------------------------------------------------
-#  CLIENT: tcpSocket to communicate with the tcpSocket of ProcessManager.py
-#-------------------------------------------------------------------------------------------------------------------
-class Client(QtCore.QObject):
-	hasNewExperiment=QtCore.pyqtSignal()
-	
-	def __init__(self,socket):
-		super(Client,self).__init__()
-		
-		#TCP socket
-		self.tcpSocket=socket
-		self.tcpSocket.disconnected.connect(self.on_disconnect)
-		self.tcpSocket.readyRead.connect(self.read)
-		
-		#server folder
-		self.server=QtCore.QDir(SERVER_PATH)
-		
-		#Reading data
-		self.blockSize=0
-		self.dataStream=QtCore.QDataStream(self.tcpSocket)
-		self.dataStream.setVersion(QtCore.QDataStream.Qt_4_0)
-		
-		#Client infos
-		self.ip=self.tcpSocket.peerAddress().toString()
-		self.connected=True
-		
-		#model
-		self.model=ExperimentModelBase(NAS_PATH)
-		self.stateList=[]
-		self.expDone=[]
-		
-		#table View
-		self.tableView=QtGui.QTableView()
-		self.tableView.setModel(self.model)
-		self.tableView.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
-		
-		#frame
-		self.frame=QtGui.QGroupBox()
-		self.frame.setTitle("Client ip: %s connected:Yes" %self.ip)
-		box=QtGui.QVBoxLayout()
-		box.addWidget(self.tableView)
-		self.frame.setLayout(box)
-		
-	#client reconnected to server
-	def update_socket(self,socket):
-		self.tcpSocket=socket
-		self.tcpSocket.disconnected.connect(self.on_disconnect)
-		self.tcpSocket.readyRead.connect(self.read)
-		
-		#Reading data
-		self.blockSize=0
-		self.dataStream=QtCore.QDataStream(self.tcpSocket)
-		self.dataStream.setVersion(QtCore.QDataStream.Qt_4_0)
-		
-		self.frame.setTitle("Client ip: %s connected:Yes" %self.ip)
-		self.connected=True
-		
-		#catch up
-		self.update_state_list()
-		
-	#client disconnected
-	def on_disconnect(self):
-		self.frame.setTitle("Client ip: %s connected:No" %self.ip)
-		try:
-			self.tcpSocket.deleteLater()
-		except RuntimeError:
-			pass
-		self.connected=False
-
-	#-------------------------------------------------------------------------------------
-	# Receive instruction
-	#-------------------------------------------------------------------------------------
-	def read(self):
-		while self.tcpSocket.bytesAvailable():
-			#read size of block
-			if self.tcpSocket.bytesAvailable() < 2:
-				print("client %s: bytes inf 2"%self.ip)
-				return False
-			self.blockSize = self.dataStream.readUInt16()
-			#check if all data is available
-			if self.tcpSocket.bytesAvailable() < self.blockSize:
-				print("client %s: bytes inf block size"%self.ip)
-				return False
-			#read instruction
-			instr=self.dataStream.readString()
-			instruction=str(instr,encoding='ascii')
-			if instruction=="processList":
-				self.instruction_process_list()
-			else:
-				print("client %s sends unknown instruction:%s"%(self.ip,instruction))
-
-	#Received a list of folder name
-	def instruction_process_list(self):
-		#read list
-		NASpathList=self.dataStream.readQStringList()
-		print("receive",NASpathList)
-		#add experiment if they are ok
-		for NASpath in NASpathList:
-			#extract name and create folder
-			name=NASpath.split('/')[-1]
-			self.server.mkdir(name)   #will not erase if already there
-			path=self.server.filePath(name)
-			#add exp
-			self.model.add_experiment(folderPath=path,NASFolderPath=NASpath)
-		#send change to client, signal server
-		self.update_state_list()
-		self.hasNewExperiment.emit()
-
-
-	#-------------------------------------------------------------------------------------
-	# Send state list
-	#-------------------------------------------------------------------------------------
-	def update_state_list(self):
-		for experiment in self.model.experimentList:
-			self.stateList+=[experiment.name,experiment.state]
-			if experiment.finish:
-				if experiment.toSync or experiment.isSyncing:
-					continue
-				elif experiment.isDone:
-					self.expDone+=[experiment.name,"True"]
-				else:
-					self.expDone+=[experiment.name,"False"]
-		if self.connected and len(self.stateList)>0:
-			self.send_update_state()
-			if len(self.expDone)>0:
-				self.send_exp_done()
-			
-	def send_exp_done(self):
-		print("exp done:",self.expDone)
-		block=self.send_protocol("expDone",List=self.expDone)
-		if block!=0:
-			self.tcpSocket.write(block)
-			self.expDone=[]
-			#self.model.clear()  problem=change index
-
-	def send_update_state(self):
-		print("send",self.stateList)
-		block=self.send_protocol("updateState",List=self.stateList)
-		if block!=0:
-			self.tcpSocket.write(block)
-			self.stateList=[]
-
-	def send_protocol(self,instruction,List=[]):
-		block=QtCore.QByteArray()
-		out=QtCore.QDataStream(block,QtCore.QIODevice.WriteOnly)
-		out.setVersion(QtCore.QDataStream.Qt_4_0)
-		out.writeUInt16(0)
-		instr=bytes(instruction,encoding="ascii")
-		out.writeString(instr)
-		if instruction=="updateState" or instruction=="expDone":
-			out.writeQStringList(List)
-		else:
-			print("send_protocol : instruction not known")
-			return 0
-		out.device().seek(0)
-		out.writeUInt16(block.size()-2)
-		return block
-
-
-#-------------------------------------------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------------------
 # TcpServer: Launch a server
-#-------------------------------------------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------------------
 class ServerView(QtGui.QGroupBox):
 	def __init__(self):
 		super(ServerView,self).__init__()
 		self.setTitle("Server informations")
-		
 		#IP adress, PORT, HOST
 		try:
 			self.ip=[(s.connect(('8.8.8.8', 80)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]
 		except:
 			self.ip=IP
-			
 		self.port=PORT
-		self.host=QtNetwork.QHostAddress(self.ip) 
-
+		self.host=QtNetwork.QHostAddress(self.ip)
 		self._layout()
 		
 	def _layout(self):
 		self.label_IP=QtGui.QLabel("IP: "+str(self.ip))
 		self.label_port=QtGui.QLabel("Port: "+str(self.port))
-		
-		self.button_listen=QtGui.QPushButton("\n Accepts new clients \n")
-		self.button_listen.setCheckable(True)
 		
 		labelLayout = QtGui.QHBoxLayout()
 		labelLayout.addWidget(self.label_IP)
@@ -209,49 +46,14 @@ class ServerView(QtGui.QGroupBox):
 		
 		vbox= QtGui.QVBoxLayout()
 		vbox.addLayout(labelLayout)
-		vbox.addWidget(self.button_listen)
 		vbox.setContentsMargins(10,10,10,10)
 		self.setLayout(vbox)
 
 
 
-#-------------------------------------------------------------------------------------------------------------------
-# console output
-#--------------------------------------------------------------------------------------------------------
-class ConsoleView(QtGui.QGroupBox):
-	def __init__(self):
-		super(ConsoleView,self).__init__()
-		
-		#output
-		self.output=QtGui.QTextEdit()
-		self.output.setReadOnly(True)
 
-		#buttons
-		self.button_clear=QtGui.QPushButton("Clear output")
-		self.button_clear.clicked.connect(self.output.clear)
-		
-		#Layout
-		vbox=QtGui.QVBoxLayout()
-		vbox.addWidget(self.output)
-		vbox.addWidget(self.button_clear)
-		self.setLayout(vbox)
-		
-	def display(self,lines):
-		self.output.append(lines)
-		
-	def separator(self,experiment):
-		sep='<b>'+SEPARATOR+SEPARATOR+'</b> \n'
-		sep1='<b> Experiment: '+str(experiment.name)+'</b> \n'
-		sep2='Working directory: '+str(experiment.folder.absolutePath())+' \n'
-		sep3='Do: %s %s \n'%(PROGRAM," ".join(experiment.arguments))
-		sep4='<b>'+SEPARATOR+SEPARATOR+'</b>'
-		self.output.append(sep)
-		self.output.append(sep1)
-		self.output.append(sep2)
-		self.output.append(sep3)
-		self.output.append(sep4)
 
-#-------------------------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------------------------
 # Process View-- Table: ClientIP, Connected, filename, state 
 #--------------------------------------------------------------------------------------------------------
 class ProcessView(QtGui.QWidget):
@@ -425,9 +227,9 @@ class ProcessView(QtGui.QWidget):
 			self.currentClientSync=None
 			return False
 
-#-------------------------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------------------------------
 # Main Window: manages view
-#-------------------------------------------------------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------------------------
 class MainWindow(QtGui.QWidget):
 	def __init__(self):
 		super(MainWindow,self).__init__()

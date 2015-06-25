@@ -86,7 +86,6 @@ class ProcessManager(QtGui.QWidget):
 		#process Here
 		self.process=QtCore.QProcess()
 		self.process.finished.connect(self.try_process)
-		#self.process.finished.connect(self.try_sync)
 		self.wasKill=False
 		self.process.readyRead.connect(self.display_output)
 		self.process.setProcessChannelMode(QtCore.QProcess.MergedChannels)
@@ -191,7 +190,7 @@ class ProcessManager(QtGui.QWidget):
 			self.button_processServer.hide()
 
 #---------------------------------------------------------------------------------------------------------
-	#List
+#List
 #---------------------------------------------------------------------------------------------------------
 	def add_experiments(self,expList):
 		self.model.add_experiments(expList)
@@ -199,10 +198,6 @@ class ProcessManager(QtGui.QWidget):
 	def clear_list(self):
 		nbRemove=self.model.clear()
 		self.sendsMessage.emit("Clear: removed %i experiment(s)" %nbRemove)
-		
-	#def cancel(self):
-		#nbFound=self.model.selection_cancel()
-		#self.sendsMessage.emit("Canceled %i experiment(s)" %nbFound)
 
 #---------------------------------------------------------------------------------------------------------
 #Transfer
@@ -222,10 +217,10 @@ class ProcessManager(QtGui.QWidget):
 			return
 		else:
 			self.model.sync_done(exitcode)
-			#self.try_send()
+			self.try_send()
+			self.try_process()
 			self.model.sync_one_experiment(self.processSync)
 
-			
 	#Send experiment path on NAS to server
 	def try_send(self):
 		if self.tcpSocket.isValid():
@@ -238,7 +233,7 @@ class ProcessManager(QtGui.QWidget):
 		self.model.server_unreachable(pathBackUPList)
 			
 #---------------------------------------------------------------------------------------------------------
-	#Process Here: use QProcess localy
+#Process Here: use QProcess localy
 #---------------------------------------------------------------------------------------------------------
 	#user click on Process Here: 
 	# -update status of experiments "ready to be process" -> "waiting to be process"
@@ -256,12 +251,13 @@ class ProcessManager(QtGui.QWidget):
 			if self.wasKill:
 				self.wasKill=False
 				exitcode=42
-			if self.model.process_is_done(exitcode):
-				self.try_sync()
+			self.model.process_is_done(exitcode):
+			self.try_sync()
 			if self.model.process_one_experiment(self.process):
 				self.console.separator(self.model.expProcessing)
 
-	#def kill(self):
+	def kill_process(self):
+		pass
 		#if self.model.kill_current():
 			#self.process.kill()
 			#self.wasKill=True
@@ -274,10 +270,19 @@ class ProcessManager(QtGui.QWidget):
 		byteArray=self.process.readAll()
 		string="".join(byteArray)
 		self.console.display(string)
-
+		
 #---------------------------------------------------------------------------------------------------------
 #	Server related
 #---------------------------------------------------------------------------------------------------------
+	def process_server(self):
+		self.model.selection_process_server()
+		self.try_sync()
+		self.try_send()
+
+	def server_send_finished(self,expDoneList):
+		self.model.server_finished(expDoneList)
+		self.try_sync()
+
 	#connect to server with ip and port specified
 	def connect_to_server(self):
 		self.ip=self.edit_ip.text()
@@ -340,15 +345,8 @@ class ProcessManager(QtGui.QWidget):
 		out.device().seek(0)
 		out.writeUInt16(block.size()-2)
 		return block
-	
-	def process_server(self):
-		self.model.selectionUpdate_process_server()
-		self.try_sync()
-		
 
-#---------------------------------------------------------------------------------------------------------
-#	receive instruction from server
-#---------------------------------------------------------------------------------------------------------
+	#receive instruction from server
 	def read(self):
 		while self.tcpSocket.bytesAvailable():
 			#read size of block
@@ -369,16 +367,14 @@ class ProcessManager(QtGui.QWidget):
 			if instruction=="updateState":
 				stateList=self.dataStream.readQStringList()
 				print("receive state",stateList)
-				self.model.update_state(stateList)
+				self.model.server_update_state(stateList)
 				
 			elif instruction=="expDone":
-				expDone=self.dataStream.readQStringList()
-				print("receive expDone",expDone)
-				self.model.server_finished(expDone)
-				self.try_sync()
+				expDoneList=self.dataStream.readQStringList()
+				print("receive expDone",expDoneList)
+				self.server_send_finished(expDoneList)
 			else:
 				print("received unknown instruction:",instruction)
-
 
 #-----------------------------------------------------------------
 	def close(self):

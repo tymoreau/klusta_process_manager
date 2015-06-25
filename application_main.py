@@ -97,6 +97,7 @@ class MainWindow(QtGui.QWidget):
 			if folderName in self.experimentDict:
 				self.experimentDict[folderName].reset_folder_icon()
 				self.fileBrowser.model.update_exp(self.experimentDict[folderName])
+				self.processManager.model.update_exp(self.experimentDict[folderName])
 			elif folderName in self.animalFolderList:
 				print(folderName,"has changed")
 				#add/remove exp (database+dict)

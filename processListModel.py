@@ -89,9 +89,6 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 		self.expProcessing=None
 		self.expSyncing=None
 		
-		self.indexProcess=None
-		self.indexSync=None
-		
 	def rowCount(self,QModelIndex):
 		return len(self.experimentList)
 		
@@ -110,6 +107,7 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 				self.endInsertRows()
 			if exp in self.isCheckable:
 				exp.refresh_state()
+		self.experimentList.sort()
 		self.updateCheck()
 		self.endResetModel()
 
@@ -199,6 +197,24 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 				elif section==1:
 					return "State"
 
+	def update_exp(self,exp):
+		if exp in self.isCheckable:
+			row=self.experimentList.index(exp)
+			index=self.index(row,1)
+			exp.refresh_state()
+			self.dataChanged.emit(index,index)
+
+	def clear(self):
+		self.beginResetModel()
+		for exp in self.isCheckable:
+			self.experimentList.remove(exp)
+		nb=len(self.isCheckable)
+		self.isCheckable=[]
+		self.checkList=[]
+		self.endResetModel()
+		return nb
+
+	
 	#-----------------------------------------------------------------------------------------------------
 	# Processing (Local)
 	#-----------------------------------------------------------------------------------------------------
@@ -244,8 +260,6 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 			self.isCheckable.append(self.expProcessing)
 			self.expProcessing=None
 			self.endResetModel()
-			return True
-		return False
 
 	#-----------------------------------------------------------------------------------------------------
 	# Sync (Local <--> BackUP)
@@ -331,39 +345,24 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 		self.toSendServer=[]
 		return l
 
-	def server_finished(pathList,success):
-		expList=[exp for exp in self.onServer if exp.pathBackUP in pathList]
-		if success:
-			pass
-		else:
-			pass
+	def server_finished(self,expDoneList):
+		pass
+	#check and add to sync or ischeckable
 
-	def server_unreachable(pathList):
+	def server_unreachable(self,pathList):
 		expList=[exp for exp in self.onServer if exp.pathBackUP in pathList]
 		for exp in expList:
 			self.onServer.remove(exp)
 			exp.state="Could not send data to server"
 			self.isCheckable.append(exp)
-			
 
+	def server_close(self):
+		pass
+	#state=pb
+
+	def server_update_state(stateList):
+		pass
 	
-
-		
-
-##list of NAS path, to process on server
-	#def list_to_send(self):
-		#l=[]
-		#for experiment in self.experimentList:
-			#if experiment.onServer and experiment.toSend:
-				#if not experiment.toSync and not experiment.isSyncing:
-					#experiment.toSend=False
-					#experiment.state="waiting for server response"
-					#fullpath=experiment.NASFolder.absolutePath()    #/NAS/animalID/Experiments/animalID_date1
-					#root=experiment.NASroot                         #/NAS
-					#pathFromRoot=fullpath.replace(root,"")          #/animalID/Experiments/animalID_date1
-					#l.append(pathFromRoot)
-		#return l
-
 	#def server_close(self):
 		#self.beginResetModel()
 		#for experiment in self.experimentList:
@@ -450,44 +449,3 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 	##-----------------------------------------------------------------------------------------------------
 
 		
-	##-----------------------------------------------------------------------------------------------------
-	## On the selection (isChecked==True)
-	##-----------------------------------------------------------------------------------------------------
-
-	
-	##user click on "process on server"
-	#def selectionUpdate_process_server(self):
-		#self.beginResetModel()
-		#nbFound=0
-		#for experiment in self.experimentList:
-			#if experiment.isChecked and not experiment.finish:
-				#if experiment.can_be_process_server():
-					#nbFound+=1
-		#self.endResetModel()
-		#return nbFound
-		
-	##user click on "cancel": update state and boolean of selection
-	#def selectionUpdate_cancel(self):
-		#self.beginResetModel()
-		#nbFound=0
-		#for experiment in self.experimentList:
-			#if experiment.isChecked:
-				#if experiment.cancel():
-					#nbFound+=1
-		#self.endResetModel()
-		#return nbFound
-
-	##user click on "remove"
-	#def selectionUpdate_remove(self):
-		#self.beginResetModel()
-		#indexToRemove=[]
-		#for index,experiment in enumerate(self.experimentList):
-			#if experiment.isChecked:
-				#if experiment.can_be_remove():
-					#self.names.remove(experiment.path)
-					#indexToRemove.append(index)
-					#self.nbChecked-=1
-		#self.changeChecked.emit(self.nbChecked)
-		#self.experimentList=[exp for index,exp in enumerate(self.experimentList) if index not in indexToRemove]
-		#self.endResetModel()
-		#return len(indexToRemove)
