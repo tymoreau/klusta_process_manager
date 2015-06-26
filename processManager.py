@@ -122,7 +122,7 @@ class ProcessManager(QtGui.QWidget):
 		self.button_connectServer=QtGui.QPushButton("\nConnect to server\n")
 		self.button_connectServer.clicked.connect(self.connect_to_server)
 		self.button_processServer=QtGui.QPushButton("\nProcess on server\n (klusta) \n")
-		#self.button_processServer.clicked.connect(self.process_server)
+		self.button_processServer.clicked.connect(self.process_server)
 		self.button_processServer.setToolTip("Back up, process on server, Sync from back up")
 
 		#sync
@@ -225,12 +225,13 @@ class ProcessManager(QtGui.QWidget):
 	def try_send(self):
 		if self.tcpSocket.isValid():
 			pathBackUPList=self.model.list_to_send_server()
+			pathBackUPList.insert(0,BACK_UP)
 			if len(pathBackUPList)>0:
 				block=self.send_protocol("processList",List=pathBackUPList)
 				if block!=0:
 					self.tcpSocket.write(block)
 					return
-		self.model.server_unreachable(pathBackUPList)
+				self.model.server_unreachable(pathBackUPList)
 			
 #---------------------------------------------------------------------------------------------------------
 #Process Here: use QProcess localy
@@ -251,8 +252,8 @@ class ProcessManager(QtGui.QWidget):
 			if self.wasKill:
 				self.wasKill=False
 				exitcode=42
-			self.model.process_is_done(exitcode):
-			self.try_sync()
+			if self.model.process_is_done(exitcode):
+				self.try_sync()
 			if self.model.process_one_experiment(self.process):
 				self.console.separator(self.model.expProcessing)
 
@@ -277,7 +278,6 @@ class ProcessManager(QtGui.QWidget):
 	def process_server(self):
 		self.model.selection_process_server()
 		self.try_sync()
-		self.try_send()
 
 	def server_send_finished(self,expDoneList):
 		self.model.server_finished(expDoneList)

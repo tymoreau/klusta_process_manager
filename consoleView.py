@@ -10,8 +10,8 @@ SEPARATOR="---"*10
 # console output
 #--------------------------------------------------------------------------------------------------------
 class ConsoleView(QtGui.QGroupBox):
-	def __init__(self):
-		super(ConsoleView,self).__init__()
+	def __init__(self,parent=None):
+		super(ConsoleView,self).__init__(parent)
 		
 		#output
 		self.output=QtGui.QTextEdit()

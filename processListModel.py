@@ -252,14 +252,19 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 		return False
 				
 	def process_is_done(self,exitcode):
+		success=False
 		if self.expProcessing is not None:
 			self.beginResetModel()
 			if self.expProcessing.process_is_done(exitcode):
 				self.toBackUP.append(self.expProcessing)
 				self.expProcessing.state="Done - waiting to be backed up"
-			self.isCheckable.append(self.expProcessing)
+				self.expProcessing=None
+				success=True
+			else:
+				self.isCheckable.append(self.expProcessing)
 			self.expProcessing=None
 			self.endResetModel()
+		return success
 
 	#-----------------------------------------------------------------------------------------------------
 	# Sync (Local <--> BackUP)
