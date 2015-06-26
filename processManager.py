@@ -216,9 +216,9 @@ class ProcessManager(QtGui.QWidget):
 		if self.processSync.state()==QtCore.QProcess.Running:
 			return
 		else:
-			self.model.sync_done(exitcode)
-			self.try_send()
-			self.try_process()
+			if self.model.sync_done(exitcode):
+				self.try_send()
+				self.try_process()
 			self.model.sync_one_experiment(self.processSync)
 
 	#Send experiment path on NAS to server
@@ -373,6 +373,10 @@ class ProcessManager(QtGui.QWidget):
 				expDoneList=self.dataStream.readQStringList()
 				print("receive expDone",expDoneList)
 				self.server_send_finished(expDoneList)
+			elif instruction=="expFail":
+				expFailList=self.dataStream.readQStringList()
+				print("receive expFail",expFailList)
+				#self.server_send_finished(expDoneList)
 			else:
 				print("received unknown instruction:",instruction)
 
@@ -394,23 +398,3 @@ class ProcessManager(QtGui.QWidget):
 				#return
 		#self.tcpSocket.disconnectFromHost()
 		#del self.model
-
-
-#---------------------------------------------------------------------------------------------------------
-#  If launch alone (not up to date)
-#---------------------------------------------------------------------------------------------------------
-#if __name__=='__main__':
-	#QtGui.QApplication.setStyle("cleanlooks")
-	#app=QtGui.QApplication(sys.argv)
-	
-	#to be able to close wth ctrl+c
-	#signal.signal(signal.SIGINT, signal.SIG_DFL)
-
-	
-	#win=ProcessManager()
-
-	#win.setMinimumSize(1000,600)
-
-	#win.show()
-
-	#sys.exit(app.exec_())

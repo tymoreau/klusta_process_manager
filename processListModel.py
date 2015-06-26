@@ -86,6 +86,8 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 		
 		self.isCheckable=[]
 		
+		self.onServer={}
+		
 		self.expProcessing=None
 		self.expSyncing=None
 		
@@ -258,7 +260,6 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 			if self.expProcessing.process_is_done(exitcode):
 				self.toBackUP.append(self.expProcessing)
 				self.expProcessing.state="Done - waiting to be backed up"
-				self.expProcessing=None
 				success=True
 			else:
 				self.isCheckable.append(self.expProcessing)
@@ -311,6 +312,7 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 				return False
 			
 	def sync_done(self,exitcode):
+		toContinue=False
 		if self.expSyncing is not None:
 			self.beginResetModel()
 			if self.expSyncing.sync_done(exitcode):
@@ -318,16 +320,19 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 					self.futureToProcess.remove(self.expSyncing)
 					self.toProcess.append(self.expSyncing)
 					self.expSyncing.state="waiting to be processed"
+					toContinue=True
 				if self.expSyncing in self.futureToSendServer:
 					self.futureToSendServer.remove(self.expSyncing)
 					self.toSendServer.append(self.expSyncing)
 					self.expSyncing.state="waiting to be send to server"
+					toContinue=True
 				else:
 					self.isCheckable.append(self.expSyncing)
 			else:
 				self.isCheckable.append(self.expSyncing)
 			self.expSyncing=None
 			self.endResetModel()
+		return toContinue
 
 	#-----------------------------------------------------------------------------------------------------
 	# Server
@@ -346,7 +351,8 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 
 	def list_to_send_server(self):
 		l=[str(exp.pathBackUP) for exp in self.toSendServer]
-		self.onServer=self.toSendServer[:]
+		for exp in self.toSendServer:
+			self.onServer[exp.folderName]=exp
 		self.toSendServer=[]
 		return l
 
@@ -365,92 +371,15 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 		pass
 	#state=pb
 
-	def server_update_state(stateList):
+	def server_update_state(self,stateList):
+		print("update state")
+		self.beginResetModel()
+		for i in range(len(stateList)-1):
+			folderName=stateList[i]
+			state=stateList[i+1]
+			self.onServer[folderName].state=state
+			i+=2
+		self.endResetModel()
+			
+	def server_close(self):
 		pass
-	
-	#def server_close(self):
-		#self.beginResetModel()
-		#for experiment in self.experimentList:
-			#if experiment.onServer:
-				#experiment.state+=" ? /!\ server was closed"
-		#self.endResetModel()
-		
-	##at least one experiment is done for the server
-	#def server_finished(self,expDone):
-		#self.beginResetModel()
-		#i=0
-		#while (i+1)<len(expDone):
-			#name=expDone[i]
-			#doneOnServer=expDone[i+1]
-			#for experiment in self.experimentList:
-				#if experiment.name==name:
-					#experiment.onServer=False
-					#if doneOnServer=="True":
-						#experiment.toSync=True
-						#experiment.localToNAS=False
-						#experiment.state="results waiting to be sync (NAS->local)"
-						#experiment.isDone=True
-			#i+=2
-		#self.endResetModel()
-	
-
-
-
-	#def kill_current(self):
-		##check if something to kill
-		#if self.indexProcess==None:
-			#return False
-		##warning message
-		#index=self.indexProcess
-		#msgBox = QtGui.QMessageBox(QtGui.QMessageBox.Warning,"Kill process ?","Kill the current process (%s) ?"%self.experimentList[index].name, QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
-		#msgBox.setDefaultButton(QtGui.QMessageBox.No)
-		#answer = msgBox.exec_()
-		##if yes, kill process (if it is still the current Experiment)
-		#if answer==QtGui.QMessageBox.Yes:
-			#if self.experimentList[index].isRunning:
-				#return True
-		#return False
-	
-	##-----------------------------------------------------------------------------------------------------
-	## Transfer / Sync
-	##-----------------------------------------------------------------------------------------------------
-	#def kill_current_sync(self):
-		##check if something to kill
-		#if self.indexSync==None:
-			#return False
-		##warning message
-		#index=self.indexSync
-		#msgBox = QtGui.QMessageBox(QtGui.QMessageBox.Warning,"Kill sync ?","Kill the current sync (%s) ?"%self.experimentList[index].name, QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
-		#msgBox.setDefaultButton(QtGui.QMessageBox.No)
-		#answer = msgBox.exec_()
-		##if yes, kill process (if it is still the current Experiment)
-		#if answer==QtGui.QMessageBox.Yes:
-			#if self.experimentList[index].isSyncing:
-				#return True
-		#return False
-
-	
-	##-----------------------------------------------------------------------------------------------------
-	## Server
-	##-----------------------------------------------------------------------------------------------------
-
-		
-		
-	#def update_state(self,stateList):
-		#self.beginResetModel()
-		#i=0
-		#while (i+1)<len(stateList):
-			#name=stateList[i]
-			#state=stateList[i+1]
-			#state=state.replace("local","server")
-			#for experiment in self.experimentList:
-				#if experiment.name==name:
-					#experiment.state=state
-			#i+=2
-		#self.endResetModel()
-
-	##-----------------------------------------------------------------------------------------------------
-	## On the whole list
-	##-----------------------------------------------------------------------------------------------------
-
-		
