@@ -14,12 +14,7 @@ from experimentModelServer import ExperimentModelServer
 from clientSocket import Client
 
 #parameters
-SERVER_PATH="./test/dataServer"
-BACK_UP_PATH="./test/fakeNAS"
-PROGRAM="klusta"
-PORT=8000
-SEPARATOR="---"*10
-IP="127.0.0.1"
+from parameterServer import *
 
 class Server(QtGui.QWidget):
 	def __init__(self,parent=None):

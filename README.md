@@ -35,8 +35,7 @@ In a terminal, in the application's folder:
 
 Server
 ------
+Parameters in parameterServer.py
+
 To launch the server
 >python serverTCP.py
-
-Click on "Accepts new clients" to start listening for connections
-

@@ -5,12 +5,7 @@ sip.setapi('QString',2)
 from PyQt4 import QtCore,QtGui,QtNetwork
 
 #parameters
-SERVER_PATH="./test/dataServer"
-BACK_UP_PATH="./test/fakeNAS"  #need
-PROGRAM="klusta"
-PORT=8000
-SEPARATOR="---"*10
-IP="127.0.0.1"
+from parameterServer import *
 
 #--------------------------------------------------------------------------------------------------------
 #  CLIENT: tcpSocket to communicate with the tcpSocket of ProcessManager.py
@@ -130,7 +125,10 @@ class Client(QtCore.QObject):
 				return False
 			#read instruction
 			instr=self.dataStream.readString()
-			instruction=str(instr,encoding='ascii')
+			try:
+				instruction=str(instr,encoding='ascii')
+			except TypeError:
+				instruction=instr
 			if instruction=="processList":
 				self.instruction_process_list()
 			else:
@@ -152,7 +150,10 @@ class Client(QtCore.QObject):
 		out=QtCore.QDataStream(block,QtCore.QIODevice.WriteOnly)
 		out.setVersion(QtCore.QDataStream.Qt_4_0)
 		out.writeUInt16(0)
-		instr=bytes(instruction,encoding="ascii")
+		try:
+			instr=bytes(instruction,encoding="ascii")
+		except:
+			instr=instruction
 		out.writeString(instr)
 		if instruction in ["updateState","expDone","expFail"]:
 			out.writeQStringList(List)

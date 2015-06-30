@@ -298,8 +298,10 @@ class ProcessManager(QtGui.QWidget):
 		out=QtCore.QDataStream(block,QtCore.QIODevice.WriteOnly)
 		out.setVersion(QtCore.QDataStream.Qt_4_0)
 		out.writeUInt16(0)
-		
-		instr=bytes(instruction,encoding="ascii")
+		try:
+			instr=bytes(instruction,encoding="ascii")
+		except:
+			instr=instruction
 		out.writeString(instr)
 		if instruction=="processList" and len(List)!=0:
 			out.writeQStringList(List)
@@ -327,7 +329,10 @@ class ProcessManager(QtGui.QWidget):
 			
 			#read instruction
 			instr=self.dataStream.readString()
-			instruction=str(instr,encoding='ascii')
+			try:
+				instruction=str(instr,encoding='ascii')
+			except TypeError:
+				instruction=instr
 			
 			if instruction=="updateState":
 				stateList=self.dataStream.readQStringList()
