@@ -9,42 +9,7 @@ from PyQt4 import QtCore,QtGui,QtNetwork
 
 from processListModel import ProcessListModel
 from parameter import *
-
-#---------------------------------------------------------------------------------------------------------
-# console output
-#---------------------------------------------------------------------------------------------------------
-class ConsoleView(QtGui.QWidget):
-	
-	def __init__(self):
-		super(ConsoleView,self).__init__()
-		#output
-		self.output=QtGui.QTextEdit()
-		self.output.setReadOnly(True)
-
-		#buttons
-		self.button_clear=QtGui.QPushButton("Clear output")
-		self.button_clear.clicked.connect(self.output.clear)
-		
-		#Layout
-		vbox=QtGui.QVBoxLayout()
-		vbox.addWidget(self.output)
-		vbox.addWidget(self.button_clear)
-		self.setLayout(vbox)
-		
-	def display(self,lines):
-		self.output.append(lines)
-		
-	def separator(self,experiment):
-		sep='<b>'+SEPARATOR+SEPARATOR+'</b> \n'
-		sep1='<b> Experiment: '+str(experiment.folderName)+'</b> \n'
-		sep2='Working directory: '+str(experiment.pathLocal)+' \n'
-		sep3='Do: %s %s\n'%(PROGRAM,experiment.folder.prm.fileName())
-		sep4='<b>'+SEPARATOR+SEPARATOR+'</b>'
-		self.output.append(sep)
-		self.output.append(sep1)
-		self.output.append(sep2)
-		self.output.append(sep3)
-		self.output.append(sep4)
+from consoleView import ConsoleView
 
 #---------------------------------------------------------------------------------------------------------
 # Process Manager
@@ -372,11 +337,13 @@ class ProcessManager(QtGui.QWidget):
 			elif instruction=="expDone":
 				expDoneList=self.dataStream.readQStringList()
 				print("receive expDone",expDoneList)
-				self.server_send_finished(expDoneList)
+				self.model.server_send_expDone(expDoneList)
+				self.try_sync()
+
 			elif instruction=="expFail":
 				expFailList=self.dataStream.readQStringList()
 				print("receive expFail",expFailList)
-				#self.server_send_finished(expDoneList)
+				self.model.server_send_expFail(expFailList)
 			else:
 				print("received unknown instruction:",instruction)
 

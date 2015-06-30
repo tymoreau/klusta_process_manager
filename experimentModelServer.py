@@ -4,11 +4,13 @@ sip.setapi('QVariant',2)
 sip.setapi('QString',2)
 from PyQt4 import QtCore,QtGui
 
-class ClientModel(QtCore.QAbstractTableModel):
+class ExperimentModelServer(QtCore.QAbstractTableModel):
 	expStateChanged=QtCore.pyqtSignal(str)
+	expDone=QtCore.pyqtSignal(str,str)
+	expFail=QtCore.pyqtSignal(str,str)
 	
 	def __init__(self,parent=None):
-		super(ClientModel,self).__init__(parent)
+		super(ExperimentModelServer,self).__init__(parent)
 		
 		self.experimentList=[]
 		self.toProcess=[]
@@ -31,14 +33,18 @@ class ClientModel(QtCore.QAbstractTableModel):
 		self.beginResetModel()
 		for exp in expList:
 			if exp not in self.experimentList:
+				self.nameToClient[exp.folderName]=clientIP
 				row=len(self.experimentList)
 				self.beginInsertRows(QtCore.QModelIndex(),row,row)
 				self.experimentList.append(exp)
-				self.toSyncFromBackUP.append(exp)
-				exp.state="Waiting to be sync (back up -> server)"
-				self.futureToProcess.append(exp)
+				if exp.folder.has_kwik():
+					self.toBackUP.append(exp)
+					exp.state="Kwik file on server, waiting to be backed up"
+				else:
+					self.toSyncFromBackUP.append(exp)
+					exp.state="Waiting to be sync (back up -> server)"
+					self.futureToProcess.append(exp)
 				self.endInsertRows()
-			self.nameToClient[exp.folderName]=clientIP
 		self.endResetModel()
 
 	#-----------------------------------------------------------------------------------------------------
@@ -49,7 +55,6 @@ class ClientModel(QtCore.QAbstractTableModel):
 		col=index.column()
 		if role==QtCore.Qt.DisplayRole:
 			if col==0:
-				#print(self.experimentList[row].name, self.experimentList[row].state)
 				return self.nameToClient[self.experimentList[row].folderName]
 			elif col==1:
 				return self.experimentList[row].folderName
@@ -100,7 +105,11 @@ class ClientModel(QtCore.QAbstractTableModel):
 					self.toProcess.append(self.expSyncing)
 					self.expSyncing.state="waiting to be processed"
 					toContinue=True
-			self.expStateChanged.emit(self.nameToClient[self.expSyncing.folderName])
+					self.expStateChanged.emit(self.nameToClient[self.expSyncing.folderName])
+				else:
+					self.expDone.emit(self.nameToClient[self.expSyncing.folderName],self.expSyncing.folderName)
+			else:
+				self.expFail.emit(self.nameToClient[self.expSyncing.folderName],self.expSyncing.folderName)
 			self.expSyncing=None
 			self.endResetModel()
 		return toContinue
@@ -112,8 +121,8 @@ class ClientModel(QtCore.QAbstractTableModel):
 				hasStart=self.expProcessing.run_process(process)
 				if hasStart:
 					self.processing=True
+					self.expStateChanged.emit(self.nameToClient[self.expProcessing.folderName])
 					return True
-				self.expStateChanged.emit(self.nameToClient[self.expProcessing.folderName])
 		return False
 	
 	def process_is_done(self,exitcode):
@@ -124,7 +133,9 @@ class ClientModel(QtCore.QAbstractTableModel):
 				self.toBackUP.append(self.expProcessing)
 				self.expProcessing.state="Done - waiting to be backed up"
 				success=True
-			self.expStateChanged.emit(self.nameToClient[self.expProcessing.folderName])
+				self.expStateChanged.emit(self.nameToClient[self.expProcessing.folderName])
+			else:
+				self.expFail.emit(self.nameToClient[self.expProcessing.folderName],self.expProcessing.folderName)
 			self.expProcessing=None
 			self.endResetModel()
 		return success

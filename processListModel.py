@@ -356,27 +356,44 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 		self.toSendServer=[]
 		return l
 
-	def server_finished(self,expDoneList):
-		pass
-	#check and add to sync or ischeckable
+	def server_send_expDone(self,expDoneList):
+		for folderName in expDoneList:
+			exp=self.onServer[folderName]
+			exp.state="Done and back up - waiting to be sync"
+			self.toSyncFromBackUP.append(exp)
+			del self.onServer[folderName]
+
+	def server_send_expFail(self,expFailList):
+		for i in range(len(expFailList)-1):
+			folderName=expFailList[i]
+			state=expFailList[i+1]
+			exp=self.onServer[folderName]
+			exp.state="Server fail: %s"%state
+			del self.onServer[folderName]
+			self.isCheckable.append(exp)
 
 	def server_unreachable(self,pathList):
-		expList=[exp for exp in self.onServer if exp.pathBackUP in pathList]
+		expList=[exp for exp in self.experimentList if exp.pathBackUP in pathList]
 		for exp in expList:
-			self.onServer.remove(exp)
+			del self.onServer[exp.folderName]
 			exp.state="Could not send data to server"
 			self.isCheckable.append(exp)
 
 	def server_close(self):
-		pass
-	#state=pb
+		for folderName in self.onServer:
+			exp=self.onServer[folderName]
+			exp.state="/!\ Server closed, state unknown"
+			self.isCheckable.append(exp)
+			del self.onServer[folderName]
 
 	def server_update_state(self,stateList):
-		print("update state")
+		print("update state",stateList)
 		self.beginResetModel()
-		for i in range(len(stateList)-1):
+		i=0
+		while (i+1)<len(stateList):
 			folderName=stateList[i]
 			state=stateList[i+1]
+			state=state.replace("local","server")
 			self.onServer[folderName].state=state
 			i+=2
 		self.endResetModel()

@@ -10,7 +10,7 @@ from PyQt4 import QtCore,QtGui,QtNetwork
 
 from experiment import Experiment
 from consoleView import ConsoleView
-from clientModel import ClientModel
+from experimentModelServer import ExperimentModelServer
 from clientSocket import Client
 
 #parameters
@@ -65,10 +65,14 @@ class Server(QtGui.QWidget):
 		#console
 		self.console=ConsoleView(self)
 
-		#clients
+		#model and clients
 		self.clientDict={}
-		self.model=ClientModel(self)
+		self.model=ExperimentModelServer(self)
 		self.model.expStateChanged.connect(self.update_one_client)
+		self.model.expDone.connect(self.one_exp_done)
+		self.model.expFail.connect(self.one_exp_fail)
+		
+		#view
 		self.tableView=QtGui.QTableView(self)
 		self.tableView.setModel(self.model)
 		self.tableView.horizontalHeader().setResizeMode(QtGui.QHeaderView.Stretch)
@@ -82,6 +86,7 @@ class Server(QtGui.QWidget):
 
 	def _layout(self):
 		self.button_kill=QtGui.QPushButton("Kill current")
+		self.button_kill.setEnabled(False)
 		#self.button_kill.clicked.connect(self.kill_current)
 		self.button_clear=QtGui.QPushButton("Clear")
 		self.button_clear.clicked.connect(self.clear)
@@ -89,6 +94,7 @@ class Server(QtGui.QWidget):
 		self.label_IP=QtGui.QLabel("IP: "+str(self.ip))
 		self.label_port=QtGui.QLabel("Port: "+str(self.port))
 		self.label_connectedClients=QtGui.QLabel("No clients connected")
+		
 		labelLayout = QtGui.QHBoxLayout()
 		labelLayout.addWidget(self.label_IP)
 		labelLayout.addSpacing(20)
@@ -157,18 +163,17 @@ class Server(QtGui.QWidget):
 				expInfoDict=self.create_expInfoDict(path)
 				if expInfoDict is None:
 					folderName=QtCore.QFileInfo(path).baseName()
-					expFail.append(folderName)
-					expFail.append("server: could not find folder in backup")
+					expFail+=[folderName,"server: could not find folder in backup"]
 				else:
 					exp=Experiment(expInfoDict)
 					if exp.folderName in self.experimentDict:
 						print("client resend",path)
-						#to do; update ?
+						#do nothing ?
 					else:
 						self.experimentDict[exp.folderName]=exp
 						expToAdd.append(exp)
 		self.model.add_experiments(expToAdd,ip)
-		self.clientDict[ip].update_experiments_state(expToAdd)
+		self.clientDict[ip].add_experiments(expToAdd)
 		self.clientDict[ip].unvalid_experiments(expFail)
 		self.try_sync()
 
@@ -211,7 +216,13 @@ class Server(QtGui.QWidget):
 				self.console.separator(self.model.expProcessing)
 
 	def update_one_client(self,ip):
-		self.clientDict[ip].send_pathToState()
+		self.clientDict[ip].send_update_state()
+
+	def one_exp_done(self,ip,folderName):
+		self.clientDict[ip].update_expDone(folderName)
+
+	def one_exp_fail(self,ip,folderName):
+		self.clientDict[ip].update_expFail(folderName)
 
 	def display_output(self):
 		byteArray=self.process.readAll()

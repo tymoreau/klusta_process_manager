@@ -36,7 +36,7 @@ class Client(QtCore.QObject):
 		self.connected=True
 
 		#Experiment
-		self.pathToState={}
+		self.folderNameToExp={}
 		self.newPaths=[]
 		self.expDoneList=[]
 		self.expFailList=[]
@@ -66,10 +66,21 @@ class Client(QtCore.QObject):
 		self.newPaths=[]
 		return new
 
-	def update_experiments_state(self,expList):
+	def add_experiments(self,expList):
 		for exp in expList:
-			self.pathToState[exp.folderName]=exp
-		self.send_pathToState()
+			self.folderNameToExp[exp.folderName]=exp
+		self.send_update_state()
+
+	def update_expDone(self,folderName):
+		self.expDoneList.append(folderName)
+		del self.folderNameToExp[folderName]
+		self.send_expDone()
+
+	def update_expFail(self,folderName):
+		state=self.folderNameToExp[folderName].state
+		self.expFailList+=[folderName,state]
+		del self.folderNameToExp[folderName]
+		self.send_expFail()
 
 	def unvalid_experiments(self,expFailList):
 		self.expFailList+=expFailList
@@ -93,12 +104,12 @@ class Client(QtCore.QObject):
 					self.tcpSocket.write(block)
 					self.expFailList=[]
 
-	def send_pathToState(self):
+	def send_update_state(self):
 		if self.connected:
 			stateList=[]
-			for path in self.pathToState:
-				stateList.append(path)
-				stateList.append(self.pathToState[path].state)
+			for folderName in self.folderNameToExp:
+				stateList.append(folderName)
+				stateList.append(self.folderNameToExp[folderName].state)
 			if stateList:
 				print("send",stateList)
 				block=self.send_protocol("updateState",List=stateList)

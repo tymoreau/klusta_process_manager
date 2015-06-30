@@ -32,9 +32,9 @@ class ConsoleView(QtGui.QGroupBox):
 		
 	def separator(self,experiment):
 		sep='<b>'+SEPARATOR+SEPARATOR+'</b> \n'
-		sep1='<b> Experiment: </b> \n'
-		sep2='Working directory: \n'
-		sep3='Do: %s %s \n'%(PROGRAM)
+		sep1='<b> Experiment: '+str(experiment.folderName)+'</b> \n'
+		sep2='Working directory: '+str(experiment.pathLocal)+' \n'
+		sep3='Do: %s %s\n'%(PROGRAM,experiment.folder.prm.fileName())
 		sep4='<b>'+SEPARATOR+SEPARATOR+'</b>'
 		self.output.append(sep)
 		self.output.append(sep1)
