@@ -1,4 +1,0 @@
-[gui_scripts]
-klusta_process_manager = klusta_process_manager.scripts.runLocal:main
-klusta_server = klusta_process_manager.scripts.runServer:main
-
