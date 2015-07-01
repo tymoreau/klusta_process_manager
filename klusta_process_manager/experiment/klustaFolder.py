@@ -2,7 +2,7 @@ import time
 #QT
 import PyQt4.QtCore as QtCore
 
-from parameter import PROGRAM
+PROGRAM="klusta"
 
 #------------------------------------------------------------------------------------------------------------
 #  Folder meant to be process with klusta 
@@ -26,15 +26,15 @@ class KlustaFolder(QtCore.QDir):
 		
 	def reset_icon(self):
 		if len(self.entryList())==0:
-			self.icon="icons/folder-grey.png"
+			self.icon="folder-grey.png"
 		elif len(self.entryList(['*.kwik']))>0:
-			self.icon="icons/folder-violet.png"
+			self.icon="folder-violet.png"
 		elif len(self.entryList(['*.dat','*.raw.kwd']))>0:
-			self.icon="icons/folder-green.png"
+			self.icon="folder-green.png"
 			if self.exists(self.name+".prm") and self.exists(self.name+".prb"):
-				self.icon="icons/folder-green-star.png"
+				self.icon="folder-green-star.png"
 		else:
-			self.icon="icons/folder-blue.png"
+			self.icon="folder-blue.png"
 		
 	#not use
 	def set_files(self,prmName,rawDataName,prbName):

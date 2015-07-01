@@ -7,9 +7,9 @@ sip.setapi('QVariant',2)
 sip.setapi('QString',2)
 from PyQt4 import QtCore,QtGui,QtNetwork
 
-from processListModel import ProcessListModel
-from parameter import *
-from consoleView import ConsoleView
+from .processListModel import ProcessListModel
+from  klusta_process_manager.general.consoleView import ConsoleView
+from config import *
 
 #---------------------------------------------------------------------------------------------------------
 # Process Manager

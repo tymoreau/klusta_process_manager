@@ -8,8 +8,8 @@ sip.setapi('QVariant',2)
 sip.setapi('QString',2)
 import PyQt4.QtCore as QtCore
 
-from klustaFolder import KlustaFolder
-from parameter import BACK_UP, EXP_PATH, DATE_TIME_FORMAT, PROGRAM,RSYNC_ARG_TO_BACKUP,RSYNC_ARG_FROM_BACKUP
+from .klustaFolder import KlustaFolder
+from config import *
 
 #----------------------------------------------------------------------------------------------
 # Experiment (=one folder)

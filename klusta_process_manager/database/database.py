@@ -6,14 +6,14 @@ from PyQt4 import QtCore,QtSql
 
 class Database(object):
 	
-	def __init__(self,name,localPath,backUPPath,expPath,defaultImage,dateTimeFormat,lengthID):
+	def __init__(self,name,localPath,backUPPath,expPath,defaultIcon,dateTimeFormat,lengthID):
 		self.db=QtSql.QSqlDatabase.addDatabase("QSQLITE","SQLITE")
 		self.db.setDatabaseName(name)
 
 		self.localPath=localPath
 		self.backUPPath=backUPPath
 		self.expPath=expPath
-		self.defaultImage=defaultImage
+		self.defaultIcon=defaultIcon
 		self.dateTimeFormat=dateTimeFormat
 		self.lengthID=lengthID
 		
@@ -162,7 +162,7 @@ class Database(object):
 		query.bindValue(":folderName",folder)
 		query.bindValue(":dateTime",date)
 		query.bindValue(":animalID",animalID)
-		query.bindValue(":icon",self.defaultImage)
+		query.bindValue(":icon",self.defaultIcon)
 		query.bindValue(":pathLocal",expPathLocal)
 		query.bindValue(":pathBackUP",expPathBackUP)
 		query.exec_()
@@ -190,14 +190,14 @@ if __name__=='__main__':
 	localPath="/home/david/NAS02"
 	backUPPath="/home/david/NAS02"
 	expPath="/Experiments"
-	defaultImage="icons/folder-grey.png"
+	defaulticon="folder-grey.png"
 	dateTimeFormat="yyyy_MM_dd_HH_mm"
 	lengthID=3
 
 	if QtCore.QDir(localPath).exists() and QtCore.QDir(backUPPath).exists():
 		name="database_loc-"+localPath.split('/')[-1]+"_backUP-"+backUPPath.split('/')[-1]+".db"
 		print("name=",name)
-		database=Database(name,localPath,backUPPath,expPath,defaultImage,dateTimeFormat,lengthID)
+		database=Database(name,localPath,backUPPath,expPath,defaultIcon,dateTimeFormat,lengthID)
 		
 		if database._open():
 			database.update_tables()

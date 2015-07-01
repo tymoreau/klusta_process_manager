@@ -1,12 +1,10 @@
 import sys
 import signal
 
-#Remove Qvariant and all from PyQt (for python2 compatibility)
+#QT
 import sip
 sip.setapi('QVariant',2)
 sip.setapi('QString',2)
-
-#import QT
 from PyQt4 import QtCore,QtGui
 
 #-------------------------------------------------------------------------------------------------------------

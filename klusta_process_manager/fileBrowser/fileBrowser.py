@@ -1,5 +1,4 @@
-import sys
-import signal
+import os
 
 #QT
 import sip
@@ -134,7 +133,9 @@ class Model(QtCore.QAbstractTableModel):
 				return self.experimentList[row].folderName
 		if role==QtCore.Qt.DecorationRole:
 			if col==3:
-				return QtGui.QIcon(self.experimentList[row].folder.icon)
+				path=os.path.join(os.path.dirname(os.path.realpath(__file__)), '../icons/')
+				path=os.path.realpath(path)+"/"
+				return QtGui.QIcon(path+self.experimentList[row].folder.icon)
 
 	def flags(self,index):
 		if index.column()==3:

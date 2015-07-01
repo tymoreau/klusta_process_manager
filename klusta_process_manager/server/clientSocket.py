@@ -4,9 +4,6 @@ sip.setapi('QVariant',2)
 sip.setapi('QString',2)
 from PyQt4 import QtCore,QtGui,QtNetwork
 
-#parameters
-from parameterServer import *
-
 #--------------------------------------------------------------------------------------------------------
 #  CLIENT: tcpSocket to communicate with the tcpSocket of ProcessManager.py
 #---------------------------------------------------------------------------------------------------------

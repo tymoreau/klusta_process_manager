@@ -2,11 +2,10 @@
 #    PATH
 #------------------------------------------------------------------------------------------
 #Path to the backup (NAS/harddrive mounted on computer)
-NAS_PATH="./test/fakeNAS"
-BACK_UP=NAS_PATH
+BACK_UP="../test/fakeNAS"
 
 #Path to data
-ROOT='./test/dataLocal'
+ROOT='../test/dataLocal'
 
 #------------------------------------------------------------------------------------------
 #    Processing: > klusta fileName.prm
@@ -32,7 +31,7 @@ TITLE="FileBrowser + Process Manager"
 #    FileBrowser     
 #------------------------------------------------------------------------------------------
 
-DEFAULT_ICON="/images/folder-grey.png"
+DEFAULT_ICON="folder-grey.png"
 LENGTH_ID=3
 DATE_TIME_FORMAT="yyyy_MM_dd_HH_mm"
 EXP_PATH="/Experiments"
@@ -57,3 +56,15 @@ SEPARATOR='---'*10
 #------------------------------------------------------------------------------------------
 IP="10.51.101.29"
 PORT=8000
+
+#------------------------------------------------------------------------------------------
+# Server
+#------------------------------------------------------------------------------------------
+SERVER_PATH="./test/dataServer"
+BACK_UP_PATH="./test/fakeNAS"
+PROGRAM="klusta"
+PORT=8000
+SEPARATOR="---"*10
+IP="127.0.0.1" 
+
+

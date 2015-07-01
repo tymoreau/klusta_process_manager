@@ -8,17 +8,16 @@ sip.setapi('QVariant',2)
 sip.setapi('QString',2)
 from PyQt4 import QtCore,QtGui,QtNetwork
 
-from experiment import Experiment
-from consoleView import ConsoleView
-from experimentModelServer import ExperimentModelServer
-from clientSocket import Client
+from klusta_process_manager.experiment import Experiment
+from klusta_process_manager.general import ConsoleView
 
-#parameters
-from parameterServer import *
+from .experimentModelServer import ExperimentModelServer
+from .clientSocket import Client
+from config import *
 
-class Server(QtGui.QWidget):
+class ServerTCP(QtGui.QWidget):
 	def __init__(self,parent=None):
-		super(Server,self).__init__(parent)
+		super(ServerTCP,self).__init__(parent)
 		
 		#IP adress, PORT, HOST
 		try:
@@ -252,7 +251,7 @@ if __name__=='__main__':
 	server=QtCore.QDir(SERVER_PATH)
 	if not nas.exists():
 		msgBox=QtGui.QMessageBox()
-		msgBox.setText("NAS_PATH do not refers to a folder: "+str(NAS_PATH))
+		msgBox.setText("BACK_UP_PATH do not refers to a folder: "+str(BACK_UP_PATH))
 		msgBox.exec_()
 	elif not server.exists():
 		msgBox=QtGui.QMessageBox()
@@ -262,6 +261,6 @@ if __name__=='__main__':
 		#to be able to close wth ctrl+c
 		signal.signal(signal.SIGINT, signal.SIG_DFL)
 		
-		win=Server()
+		win=ServerTCP()
 
 		sys.exit(app.exec_())

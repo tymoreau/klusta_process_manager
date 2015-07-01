@@ -1,0 +1,48 @@
+---------Global
+# Add licence
+
+# closeEvent
+
+--------Idea of new Features
+# simpler no database version 
+# allow .dat not in local, only in backUP (beacause .dat take too much memory)
+# look by date instead of animal
+
+# Include OpenEphys stuff
+
+
+
+---------Main Window
+# loading message if database too long
+
+
+---------FileBrowser
+# filewatcher to check if color change
+# check if folder root empty ?
+
+# allow user to pick a folder's' color manually
+
+# keep list of animal where colors are done (so no need to launch thread)
+
+---------ProcessManager --> might change a lot with phy
+# better detect crash
+# rethink buttons, put some in a menu or rightclick
+
+# keep a list of what is checked, remove experiment.isCheck
+
+
+---------Server
+# create separate app
+# check what happens is client leaves while data is processing
+# give a name to client ? 
+# send stuff when client reconnect
+
+---------database
+# datetime is not flewible (use '_')
+
+
+
+try:
+    x = my_dict["key"]
+except KeyError:
+    # handle missing key
