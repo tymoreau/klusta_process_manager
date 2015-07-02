@@ -4,6 +4,8 @@ sip.setapi('QVariant',2)
 sip.setapi('QString',2)
 from PyQt4 import QtCore,QtGui,QtNetwork
 
+from config import *
+
 #--------------------------------------------------------------------------------------------------------
 #  CLIENT: tcpSocket to communicate with the tcpSocket of ProcessManager.py
 #---------------------------------------------------------------------------------------------------------
@@ -136,8 +138,7 @@ class Client(QtCore.QObject):
 		#read list
 		pathList=self.dataStream.readQStringList()
 		rootClient=pathList.pop(0)
-		for path in pathList:
-			path=path.replace(rootClient,BACK_UP_PATH)
+		pathList=[path.replace(rootClient,BACK_UP_PATH) for path in pathList]
 		self.newPaths+=pathList
 		if self.newPaths:
 			self.hasNewPaths.emit(self.ip)

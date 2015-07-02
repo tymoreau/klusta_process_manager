@@ -249,6 +249,12 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 				if hasStart:
 					self.processing=True
 					return True
+				else:
+					process.kill()
+					self.beginResetModel()
+					self.isCheckable.append(self.expProcessing)
+					self.endResetModel()
+					self.expProcessing=None
 		return False
 				
 	def process_is_done(self,exitcode):
@@ -385,7 +391,6 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 			del self.onServer[folderName]
 
 	def server_update_state(self,stateList):
-		print("update state",stateList)
 		self.beginResetModel()
 		i=0
 		while (i+1)<len(stateList):

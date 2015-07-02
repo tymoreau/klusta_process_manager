@@ -2,7 +2,7 @@ import time
 #QT
 import PyQt4.QtCore as QtCore
 
-PROGRAM="klusta"
+from config import PROGRAM
 
 #------------------------------------------------------------------------------------------------------------
 #  Folder meant to be process with klusta 
@@ -201,15 +201,16 @@ class KlustaFolder(QtCore.QDir):
 			arguments=[self.prm.fileName()]
 			self.state="try to launch klusta"
 			process.setWorkingDirectory(self.path)
+			print(self.program,arguments)
 			process.start(self.program,arguments)
 			process.waitForStarted()
 			if process.state()==QtCore.QProcess.Running:
 				self.state="klusta running"
+				return True
 				#self.icon= ? + send message to fileBrowser
 			else: #if process.error()==QtCore.QProcess.FailedToStart:
 				self.state="failed to start program:%s"%PROGRAM
-				process.kill()
-			return True   # a process started
+				print(process.error())
 		return False
 	
 	def is_done(self,exitcode):

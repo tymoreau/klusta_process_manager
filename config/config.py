@@ -16,8 +16,6 @@ ROOT='../test/dataLocal'
 # To avoid "source activate klusta", put full path
 PROGRAM="/home/david/anaconda/envs/klusta/bin/klusta"
 
-
-
 #------------------------------------------------------------------------------------------
 #    Main Window   
 #------------------------------------------------------------------------------------------
@@ -55,16 +53,13 @@ SEPARATOR='---'*10
 #    Client: where to find server by default
 #------------------------------------------------------------------------------------------
 IP="10.51.101.29"
-PORT=8000
+PORT=1234
 
 #------------------------------------------------------------------------------------------
 # Server
 #------------------------------------------------------------------------------------------
-SERVER_PATH="./test/dataServer"
-BACK_UP_PATH="./test/fakeNAS"
-PROGRAM="klusta"
-PORT=8000
-SEPARATOR="---"*10
-IP="127.0.0.1" 
+SERVER_PATH="../test/dataServer"
+BACK_UP_PATH="../test/NASserver"
+
 
 
