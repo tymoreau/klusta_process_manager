@@ -12,9 +12,17 @@ ROOT='../test/dataLocal'
 #------------------------------------------------------------------------------------------
 
 #PROGRAM="klusta"
-
 # To avoid "source activate klusta", put full path
 PROGRAM="/home/david/anaconda/envs/klusta/bin/klusta"
+
+#------------------------------------------------------------------------------------------
+#    Client: where to find server by default
+#------------------------------------------------------------------------------------------
+IP="10.51.101.29"
+PORT=1234
+
+
+
 
 #------------------------------------------------------------------------------------------
 #    Main Window   
@@ -23,7 +31,7 @@ WIDTH=1000
 HEIGHT=1000
 MIN_WIDTH=int(WIDTH*0.75)
 MIN_HEIGHT=int(HEIGHT*0.75)
-TITLE="FileBrowser + Process Manager"
+TITLE="Klusta Process Manager"
 
 #------------------------------------------------------------------------------------------
 #    FileBrowser     
@@ -35,25 +43,29 @@ DATE_TIME_FORMAT="yyyy_MM_dd_HH_mm"
 EXP_PATH="/Experiments"
 
 #------------------------------------------------------------------------------------------
+#    Client: where to find server by default
+#------------------------------------------------------------------------------------------
+IP="10.51.101.29"
+PORT=1234
+
+#------------------------------------------------------------------------------------------
 #    Transfer:  > rsync RSYNC_ARG /source/ /destination     
 #------------------------------------------------------------------------------------------
-
-#Rsync arguments | -a=archive (recursive, update permission and timestamp, keep symlink...) -u=update (do not downgrade files)
-RSYNC_ARG_TO_BACKUP="-au"
-RSYNC_ARG_FROM_BACKUP="-au"
+#Rsync arguments
+# -r: recursive
+# -l: keep symlink
+# -z: compress (faster if slow network)
+# -u: update (keep the last modified file)
+# -t: update the timestamps (important for -u to work correctly)
+# -O: don't update the timestamps on directories (rsync fail (error 23) on some filesystem)
+RSYNC_ARG_TO_BACKUP="-rlzutO"
+RSYNC_ARG_FROM_BACKUP="-rlzutO"
 
 #------------------------------------------------------------------------------------------
 #    Console
 #------------------------------------------------------------------------------------------
 #separator printed in the console view 
 SEPARATOR='---'*10
-
-
-#------------------------------------------------------------------------------------------
-#    Client: where to find server by default
-#------------------------------------------------------------------------------------------
-IP="10.51.101.29"
-PORT=1234
 
 #------------------------------------------------------------------------------------------
 # Server
