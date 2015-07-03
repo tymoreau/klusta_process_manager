@@ -28,7 +28,7 @@ class Experiment(QtCore.QObject):
 		self.folderName=expInfoDict["folderName"]
 		icon=expInfoDict["icon"]
 		self.pathBackUP=expInfoDict["pathBackUP"]
-		self.pathLocal=expInfoDict["pathLocal"]
+		self.pathLocal=QtCore.QFileInfo(expInfoDict["pathLocal"]).absoluteFilePath()
 		self.animalID=expInfoDict["animalID"]
 		self.dateTime=None
 		self.yearMonth=None
@@ -110,6 +110,9 @@ class Experiment(QtCore.QObject):
 		else:
 			return False
 
+	def is_done_and_backUP(self):
+		return self.backUPFolder.has_kwik()
+
 	#------------------------------------------------------------------------------------------------------
 	#Processs local
 	def can_be_process(self):
@@ -139,7 +142,7 @@ class Experiment(QtCore.QObject):
 	def sync_to_backUP(self,process):
 		if self.folder.exists():
 			if self.backUPFolder.exists():
-				process.start("rsync",[RSYNC_ARG_TO_BACKUP,self.pathLocal+"/",self.pathBackUP])
+				process.start("rsync",RSYNC_ARG_TO_BACKUP+[self.pathLocal+"/",self.pathBackUP])
 				self.state="Sync Local->BackUP"
 				return True
 			self.state="No folder in backUP"
@@ -147,10 +150,11 @@ class Experiment(QtCore.QObject):
 			self.state="No folder in local"
 		return False
 		
-	def sync_from_backUP(self,process):
+	def sync_from_backUP(self,process,arg=RSYNC_ARG_FROM_BACKUP):
 		if self.folder.exists():
 			if self.backUPFolder.exists():
-				process.start("rsync",[RSYNC_ARG_FROM_BACKUP,self.pathBackUP+"/",self.pathLocal])
+				process.start("rsync",arg+[self.pathBackUP+"/",self.pathLocal])
+				print("rsync",arg+[self.pathBackUP+"/",self.pathLocal])
 				self.state="Sync BackUP->Local"
 				return True
 			self.state="No folder in backUP"

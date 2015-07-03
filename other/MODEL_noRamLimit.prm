@@ -33,7 +33,7 @@ nchannels = 34
 # This is needed to visualise the data in TraceView etc, and speeds up
 # future runs of SpikeDetekt. If a .raw.kwd file is used as the input,
 # it will never be overwritten.
-save_raw = True
+save_raw = False
 # Whether to save the .high.kwd file with HPF data used for spike
 # detection. This is processed using a Butterworth band-pass filter.
 save_high = False
@@ -45,7 +45,7 @@ filter_high = 0.95 * .5 * sample_rate
 filter_butter_order = 3
 # Whether to save a .low.kwd file; this is processed using a Hamming
 # window FIR filter, then subsampled 16x to save space when storing.
-save_low = False
+save_low = True
 
 # ---------------------------------------------------------------------
 # Chunks

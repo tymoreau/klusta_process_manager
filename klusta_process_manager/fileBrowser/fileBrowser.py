@@ -343,8 +343,10 @@ class FileBrowser(QtGui.QWidget):
 		self.model.worker.valueChanged.connect(self.display_load)
 		self.view.table.setItemDelegate(self.delegate)
 		
-		#button 
-		self.button_add=QtGui.QPushButton(QtGui.QIcon("icons/downarrow.png")," ")
+		#button
+		pathIcon=os.path.join(os.path.dirname(os.path.realpath(__file__)), '../icons/downarrow.png')
+		pathIcon=os.path.realpath(pathIcon)
+		self.button_add=QtGui.QPushButton(QtGui.QIcon(pathIcon)," ")
 		self.button_createFiles=QtGui.QPushButton("Create prm/prb")
 		self.button_createFiles.clicked.connect(self.createFiles)
 		self.button_createFiles.setEnabled(False)

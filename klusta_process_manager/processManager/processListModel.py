@@ -400,6 +400,3 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 			self.onServer[folderName].state=state
 			i+=2
 		self.endResetModel()
-			
-	def server_close(self):
-		pass

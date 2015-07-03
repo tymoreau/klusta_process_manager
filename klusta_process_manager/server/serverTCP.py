@@ -151,21 +151,19 @@ class ServerTCP(QtGui.QWidget):
 		newPaths=self.clientDict[ip].get_new_paths()
 		expToAdd=[]
 		expFail=[]
-		print(newPaths)
 		for path in newPaths:
-			if path not in self.experimentDict:
-				expInfoDict=self.create_expInfoDict(path)
-				if expInfoDict is None:
-					folderName=QtCore.QFileInfo(path).baseName()
-					expFail+=[folderName,"server: could not find folder in backup"]
+			expInfoDict=self.create_expInfoDict(path)
+			if expInfoDict is None:
+				folderName=QtCore.QFileInfo(path).baseName()
+				expFail+=[folderName,"server: could not find folder in backup"]
+			else:
+				if expInfoDict["folderName"] in self.experimentDict:
+					print("client resend",path)
+					exp=self.experimentDict[expInfoDict["folderName"]]
 				else:
 					exp=Experiment(expInfoDict)
-					if exp.folderName in self.experimentDict:
-						print("client resend",path)
-						#do nothing ?
-					else:
-						self.experimentDict[exp.folderName]=exp
-						expToAdd.append(exp)
+					self.experimentDict[exp.folderName]=exp
+				expToAdd.append(exp)
 		self.model.add_experiments(expToAdd,ip)
 		self.clientDict[ip].add_experiments(expToAdd)
 		self.clientDict[ip].unvalid_experiments(expFail)
@@ -193,8 +191,6 @@ class ServerTCP(QtGui.QWidget):
 			if self.model.sync_done(exitcode):
 				self.try_process()
 			self.model.sync_one_experiment(self.processSync)
-			#self.clientDict[ip].send_pathToState() signal from model
-			#try send done/fail
 
 	def try_process(self,exitcode=0):
 		if self.process.state()==QtCore.QProcess.Running:
@@ -212,11 +208,12 @@ class ServerTCP(QtGui.QWidget):
 	def update_one_client(self,ip):
 		self.clientDict[ip].send_update_state()
 
-	def one_exp_done(self,ip,folderName):
+	def one_exp_done(self,ip,folderName,pathBackUP):
 		self.clientDict[ip].update_expDone(folderName)
 
 	def one_exp_fail(self,ip,folderName):
 		self.clientDict[ip].update_expFail(folderName)
+		del self.experimentDict[pathBackUP]
 
 	def display_output(self):
 		byteArray=self.process.readAll()

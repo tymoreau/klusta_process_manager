@@ -76,6 +76,9 @@ class Client(QtCore.QObject):
 		del self.folderNameToExp[folderName]
 		self.send_expFail()
 
+	def update_expDeleted(self,folderName):
+		del self.folderNameToExp[folderName]
+
 	def unvalid_experiments(self,expFailList):
 		self.expFailList+=expFailList
 		self.send_expFail()
