@@ -126,9 +126,10 @@ class MainWindow(QtGui.QWidget):
 
 	def closeEvent(self,event):
 		expList=self.experimentDict.values()
-		self.fileBrowser.model.worker.abort()
-		self.database.reverbate_change(expList)
-		self.database.close()
-		self.processManager.close()
-		self.close()
-		
+		if self.processManager.on_close():
+			self.fileBrowser.on_close()
+			self.database.reverbate_change(expList)
+			self.database.close()
+			event.accept()
+			return
+		event.ignore()

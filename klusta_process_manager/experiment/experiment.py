@@ -97,6 +97,16 @@ class Experiment(QtCore.QObject):
 			if not self.folder.has_rawData():
 				if self.backUPFolder.has_rawData():
 					self.state="raw data on back up"
+
+	def create_files(self,prmModel,prbModel):
+		if self.folder.has_rawData():
+			self.folder.create_files(prmModel=prmModel,prbModel=prbModel)
+		elif self.backUPFolder.has_rawData():
+			rawData=self.backUPFolder.rawData.fileName()
+			self.folder.create_files(prmModel=prmModel,prbModel=prbModel,rawData=rawData)
+		else:
+			self.state="raw data not found"
+			
 		
 	#------------------------------------------------------------------------------------------------------
 	#find path in backUP
@@ -126,6 +136,17 @@ class Experiment(QtCore.QObject):
 			self.state="Done (kwik file on back up)"
 			return False
 		return True
+
+	def can_be_process_on_server(self):
+		if self.can_be_process():
+			return True
+		elif self.backUPFolder.can_be_process():
+			return True
+		#dat on BackUP, prm and prb on local
+		elif self.backUPFolder.has_rawData():
+			if self.folder.prm.exists() and self.folder.prb.exists():
+				return True
+		return False
 
 	def run_process(self,process):
 		res=self.folder.run_process(process)

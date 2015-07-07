@@ -2,10 +2,10 @@
 #    PATH
 #------------------------------------------------------------------------------------------
 #Path to the backup (NAS/harddrive mounted on computer)
-BACK_UP='/NAS02'
+BACK_UP='../test/fakeNAS'
 
 #Path to data
-ROOT="/NAS02"
+ROOT="../test/dataLocal"
 
 #------------------------------------------------------------------------------------------
 #    Processing: > klusta fileName.prm
@@ -62,7 +62,7 @@ PORT=1234
 #Do not put extra quotes (Wrong: --include='*.prm' | Right: --include=*.prm)
 
 RSYNC_ARG_TO_BACKUP=["-rlzutO"]
-RSYNC_ARG_FROM_BACKUP=["-rlzutO"]
+RSYNC_ARG_FROM_BACKUP=["-rlzutO","--exclude=*.dat"]
 
 RSYNC_ARG_FROM_BACKUP_TO_SERVER=["-rlzutO","--prune-empty-dirs","--include","*/","--include=*.prm","--include=*.prb","--include=*.dat","--exclude=*"]
 
@@ -77,8 +77,8 @@ SEPARATOR='---'*10
 #------------------------------------------------------------------------------------------
 # Server
 #------------------------------------------------------------------------------------------
-SERVER_PATH="/home/david/SERVER/data"
-BACK_UP_PATH="/NAS02"
+SERVER_PATH="../test/dataServer"
+BACK_UP_PATH='../test/fakeNAS'
 
 
 

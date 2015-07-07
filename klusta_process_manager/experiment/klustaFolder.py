@@ -33,6 +33,8 @@ class KlustaFolder(QtCore.QDir):
 			self.icon="folder-green.png"
 			if self.exists(self.name+".prm") and self.exists(self.name+".prb"):
 				self.icon="folder-green-star.png"
+		elif self.exists(self.name+".prm") and self.exists(self.name+".prb"):
+			self.icon="folder-blue-star.png"
 		else:
 			self.icon="folder-blue.png"
 		
@@ -134,6 +136,7 @@ class KlustaFolder(QtCore.QDir):
 			self.rawData.setFile(self.filePath(self.name+".raw.kwd"))
 			self.state=".raw.kwd"
 			return True
+		return False
 		
 	def extension_list(self):
 		extList=[]
@@ -149,9 +152,9 @@ class KlustaFolder(QtCore.QDir):
 	
 	#---------------------------------------------------------------------------------------------
 	#create prm and prb file from models
-	def create_files(self,prmModel,prbModel):
+	def create_files(self,prmModel,prbModel,rawData=None):
 		#look for raw data
-		if not self.has_rawData():
+		if not self.has_rawData() and rawData is None:
 			self.state="raw data not found"
 			return False
 		#prm and prb files
@@ -177,7 +180,10 @@ class KlustaFolder(QtCore.QDir):
 					line="experiment_name = '%s' \n"%self.name
 					find+=1
 				elif line.startswith("raw_data_files"):
-					line="raw_data_files = '%s' \n"%self.rawData.fileName()
+					if rawData is None:
+						line="raw_data_files = '%s' \n"%self.rawData.fileName()
+					else:
+						line="raw_data_files = '%s' \n"%rawData
 					find+=1
 				elif line.startswith("prb_file"):
 					line="prb_file = '%s.prb' \n"%self.name

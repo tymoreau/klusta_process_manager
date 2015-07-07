@@ -223,13 +223,15 @@ class ProcessManager(QtGui.QWidget):
 				self.console.separator(self.model.expProcessing)
 
 	def kill_process(self):
-		pass
-		#if self.model.kill_current():
-			#self.process.kill()
-			#self.wasKill=True
-			#self.sendsMessage.emit("Kill: killed process")
-		#else:
-			#self.sendsMessage.emit("Kill: did nothing")
+		self.process.waitForFinished(50)
+		if self.process.state()==QtCore.QProcess.Running:
+			self.process.kill()
+			self.wasKill=True
+			self.process.waitForFinished(1000)
+		self.processSync.waitForFinished(50)
+		if self.processSync.state==QtCore.QProcess.Running:
+			self.processSync.kill()
+			self.processSync.waitForFinished(1000)
 
 	#print output of the console in the console view
 	def display_output(self):
@@ -353,20 +355,18 @@ class ProcessManager(QtGui.QWidget):
 				print("received unknown instruction:",instruction)
 
 #-----------------------------------------------------------------
-	def close(self):
-		pass
-		#if not self.process.waitForFinished(1):
-			#if self.model.kill_current():
-				#self.process.kill()
-				#self.wasKill=True
-				#self.process.waitForFinished(1)
-			#else:
-				#return
-		#if not self.processSync.waitForFinished(1):
-			#if self.model.kill_current_sync():
-				#self.processSync.kill()
-				#self.processSync.waitForFinished(1)
-			#else:
-				#return
-		#self.tcpSocket.disconnectFromHost()
-		#del self.model
+	def on_close(self):
+		if self.process.state()==QtCore.QProcess.Running or self.processSync.state==QtCore.QProcess.Running:
+			str1="Confirm exit"
+			str2="A process is running, do you really want to qut? Process will be kill"
+			cancelButton=QtGui.QMessageBox.Cancel
+			click=QtGui.QMessageBox.warning(self,str1,str2,cancelButton|QtGui.QMessageBox.Ok, cancelButton)
+			if click==cancelButton:
+				return False
+			else:
+				self.processSync.finished.disconnect(self.try_sync)
+				self.process.finished.disconnect(self.try_process)
+				self.kill_process()
+		self.tcpSocket.disconnectFromHost()
+		return True
+		

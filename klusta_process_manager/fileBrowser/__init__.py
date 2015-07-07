@@ -1,1 +1,1 @@
-from .fileBrowser import FileBrowser 
+from .fileBrowser import FileBrowser

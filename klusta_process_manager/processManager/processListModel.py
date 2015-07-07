@@ -214,7 +214,6 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 		self.endResetModel()
 		return nb
 
-	
 	#-----------------------------------------------------------------------------------------------------
 	# Processing (Local)
 	#-----------------------------------------------------------------------------------------------------
@@ -344,7 +343,7 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 	def selection_process_server(self):
 		self.beginResetModel()
 		for exp in self.checkList:
-			if exp.can_be_process():
+			if exp.can_be_process_on_server():
 				self.toBackUP.append(exp)
 				self.futureToSendServer.append(exp)
 				self.isCheckable.remove(exp)

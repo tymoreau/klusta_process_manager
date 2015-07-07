@@ -8,7 +8,7 @@ experiment_name = 'Rat034_2015_02_19_13_30'
 # Raw data files. These can be in .dat/.bin/any raw data format,
 # or .kwd HDF5 KWIK format. You can pass a list of several files which
 # will be processed sequentially.
-raw_data_files = experiment_name + '.raw.kwd'
+raw_data_files = experiment_name + '.dat'
 
 #raw_data_files = ['file1.dat', 'file2.dat', 'file3.dat']
 # Probe file describing geometry, channels, and adjacency graph in JSON
