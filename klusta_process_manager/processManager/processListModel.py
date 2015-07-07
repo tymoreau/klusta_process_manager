@@ -119,6 +119,42 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 		self.updateCheck()
 		self.endResetModel()
 
+	def exp_right_click(self,index):
+		if index.isValid():
+			exp=self.experimentList[index.row()]
+			if exp not in self.isCheckable:
+				menu=QtGui.QMenu()
+				killAction=QtGui.QAction("Kill process",menu)
+				cancelAction=QtGui.QAction("Cancel process",menu)
+				if exp is self.expProcessing:
+					menu.addAction(killAction)
+				elif exp is self.expSyncing:
+					return False
+				else:
+					menu.addAction(cancelAction)
+				action=menu.exec_(QtGui.QCursor.pos())
+				if action==cancelAction:
+					self.cancel_action(exp)
+				elif action==killAction:
+					return True
+		return False
+
+	def cancel_action(self,exp):
+		if exp in self.toProcess:
+			self.toProcess.remove(exp)
+		elif exp in self.toBackUP:
+			self.toBackUP.remove(exp)
+			if exp in self.futureToSendServer:
+				self.futureToSendServer.remove(exp)
+		elif exp in self.toSyncFromBackUP:
+			self.toSyncFromBackUP.remove(exp)
+		if exp in self.futureToProcess:
+			self.futureToProcess.remove(exp)
+		self.beginResetModel()
+		exp.state+="-cancelled"
+		self.isCheckable.append(exp)
+		self.endResetModel()
+
 	def updateCheck(self):
 		nbChecked=len(self.checkList)
 		self.updateHeader(nbChecked)

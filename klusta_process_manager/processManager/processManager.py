@@ -28,7 +28,9 @@ class ProcessManager(QtGui.QWidget):
 		self.tableView=QtGui.QTableView()
 		self.tableView.setModel(self.model)
 		self.tableView.setHorizontalHeader(self.model.header)
-		
+		self.tableView.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+		self.tableView.customContextMenuRequested.connect(self.table_right_click)
+
 		#console
 		self.console=ConsoleView()
 		
@@ -171,6 +173,19 @@ class ProcessManager(QtGui.QWidget):
 	def remove(self):
 		self.model.remove()
 
+	def table_right_click(self,point):
+		index=self.tableView.indexAt(point)
+		killProcess=self.model.exp_right_click(index)
+		if killProcess:
+			str1="Confirm kill"
+			str2="Do you really want to kill current process ?"
+			cancelButton=QtGui.QMessageBox.Cancel
+			click=QtGui.QMessageBox.warning(self,str1,str2,cancelButton|QtGui.QMessageBox.Ok, cancelButton)
+			if click==cancelButton:
+				return
+			else:
+				self.kill_process()
+
 #---------------------------------------------------------------------------------------------------------
 #Transfer
 #---------------------------------------------------------------------------------------------------------
@@ -192,6 +207,12 @@ class ProcessManager(QtGui.QWidget):
 				self.try_send()
 				self.try_process()
 			self.model.sync_one_experiment(self.processSync)
+
+	def kill_processSync(self):
+		self.processSync.waitForFinished(50)
+		if self.processSync.state==QtCore.QProcess.Running:
+			self.processSync.kill()
+			self.processSync.waitForFinished(1000)
 
 	#Send experiment path on NAS to server
 	def try_send(self):
@@ -235,10 +256,6 @@ class ProcessManager(QtGui.QWidget):
 			self.process.kill()
 			self.wasKill=True
 			self.process.waitForFinished(1000)
-		self.processSync.waitForFinished(50)
-		if self.processSync.state==QtCore.QProcess.Running:
-			self.processSync.kill()
-			self.processSync.waitForFinished(1000)
 
 	#print output of the console in the console view
 	def display_output(self):
@@ -365,7 +382,7 @@ class ProcessManager(QtGui.QWidget):
 	def on_close(self):
 		if self.process.state()==QtCore.QProcess.Running or self.processSync.state==QtCore.QProcess.Running:
 			str1="Confirm exit"
-			str2="A process is running, do you really want to qut? Process will be kill"
+			str2="A process is running, do you really want to quit? Process will be kill"
 			cancelButton=QtGui.QMessageBox.Cancel
 			click=QtGui.QMessageBox.warning(self,str1,str2,cancelButton|QtGui.QMessageBox.Ok, cancelButton)
 			if click==cancelButton:
@@ -374,6 +391,7 @@ class ProcessManager(QtGui.QWidget):
 				self.processSync.finished.disconnect(self.try_sync)
 				self.process.finished.disconnect(self.try_process)
 				self.kill_process()
+				self.kill_processSync()
 		self.tcpSocket.disconnectFromHost()
 		return True
 		

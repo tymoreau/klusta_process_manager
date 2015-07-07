@@ -1,28 +1,26 @@
+
+03_07_2015
+
 Requirements
 ------------
 
-Python 3.x and PyQt4 (already in Anaconda)
-Should also work with Python2.x
+Python 3.4 and PyQt4 (already in Anaconda)
+Should also work with Python2.7
 
 With Miniconda or Anaconda install, do:
-> conda install conda
-
+> conda update conda
 > conda update pyqt
 
 
 Install
 -------
 
-1) Get source
-* From DropBox: copy paste whole folder
-* From GitHub: 
-        > git clone https://github.com/tymoreau/klusta_process_manager.git
+1) Get source from DropBox: copy-paste zip file, unzip
 
-        
 2) Change parameters (path to your data, adress of server...) in /config/config.py
 /!\ You have to re-install everytime you change parameters
 
-3) In a terminal, in the folder:
+3) In a terminal, in the application's folder:
 > python setup.py install
 
 
@@ -37,6 +35,8 @@ In a terminal, anywhere:
 Server
 ------
 Parameters in config.py
+PORT=1234
+IP=10.51.101.61
 
 To launch the server
 >klusta_server
