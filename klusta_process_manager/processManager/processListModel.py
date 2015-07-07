@@ -111,6 +111,14 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 		self.updateCheck()
 		self.endResetModel()
 
+	def remove(self):
+		self.beginResetModel()
+		for exp in self.checkList:
+			self.experimentList.remove(exp)
+		self.checkList=[]
+		self.updateCheck()
+		self.endResetModel()
+
 	def updateCheck(self):
 		nbChecked=len(self.checkList)
 		self.updateHeader(nbChecked)

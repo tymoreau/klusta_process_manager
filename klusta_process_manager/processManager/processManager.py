@@ -96,6 +96,9 @@ class ProcessManager(QtGui.QWidget):
 		self.button_sync=QtGui.QPushButton("Sync from back up")
 		self.button_sync.clicked.connect(self.sync_from_backUP)
 
+		self.button_remove=QtGui.QPushButton("Remove")
+		self.button_remove.clicked.connect(self.remove)
+
 	def update_buttons(self,nbChecked):
 		if nbChecked>0:
 			boolean=True
@@ -128,6 +131,7 @@ class ProcessManager(QtGui.QWidget):
 		self.vboxSelection.addWidget(self.button_processServer)
 		self.vboxSelection.addWidget(self.button_backUP)
 		self.vboxSelection.addWidget(self.button_sync)
+		self.vboxSelection.addWidget(self.button_remove)
 		frameSelection=QtGui.QGroupBox("On Selection")
 		frameSelection.setLayout(self.vboxSelection)
 		self.button_processServer.hide()
@@ -163,6 +167,9 @@ class ProcessManager(QtGui.QWidget):
 	def clear_list(self):
 		nbRemove=self.model.clear()
 		self.sendsMessage.emit("Clear: removed %i experiment(s)" %nbRemove)
+
+	def remove(self):
+		self.model.remove()
 
 #---------------------------------------------------------------------------------------------------------
 #Transfer
