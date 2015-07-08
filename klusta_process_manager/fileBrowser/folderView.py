@@ -24,6 +24,7 @@ class FolderView(QtGui.QWidget):
 		self.listFile=QtGui.QTreeView(self)
 		self.listFile.header().setResizeMode(QtGui.QHeaderView.ResizeToContents)
 		self.listFile.header().setStretchLastSection(True)
+		self.listFile.doubleClicked.connect(self.open_selected_file)
 	
 		#FileSytemModel linked to listFile
 		self.folderModel=QtGui.QFileSystemModel(self)
@@ -74,3 +75,11 @@ class FolderView(QtGui.QWidget):
 		he=self.table.horizontalHeader()
 		length=he.sectionSize(0)+he.sectionSize(1)+he.sectionSize(2)+he.sectionSize(3)
 		self.table.setMaximumWidth(length+10)
+
+	#double click on a file
+	def open_selected_file(self,index):
+		if self.folderModel.isDir(index):
+			return
+		path=self.folderModel.filePath(index)
+		QtGui.QDesktopServices.openUrl(QtCore.QUrl(path))
+		
