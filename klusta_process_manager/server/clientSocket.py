@@ -73,11 +73,7 @@ class Client(QtCore.QObject):
 	def update_expFail(self,folderName):
 		state=self.folderNameToExp[folderName].state
 		self.expFailList+=[folderName,state]
-		del self.folderNameToExp[folderName]
 		self.send_expFail()
-
-	def update_expDeleted(self,folderName):
-		del self.folderNameToExp[folderName]
 
 	def unvalid_experiments(self,expFailList):
 		self.expFailList+=expFailList

@@ -213,7 +213,6 @@ class ServerTCP(QtGui.QWidget):
 
 	def one_exp_fail(self,ip,folderName):
 		self.clientDict[ip].update_expFail(folderName)
-		del self.experimentDict[pathBackUP]
 
 	def display_output(self):
 		byteArray=self.process.readAll()
