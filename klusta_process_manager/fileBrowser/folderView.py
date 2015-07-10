@@ -3,6 +3,7 @@ import sip
 sip.setapi('QVariant',2)
 sip.setapi('QString',2)
 from PyQt4 import QtCore,QtGui
+import time
 
 class FolderView(QtGui.QWidget):
 
@@ -28,6 +29,19 @@ class FolderView(QtGui.QWidget):
 	
 		#FileSytemModel linked to listFile
 		self.folderModel=QtGui.QFileSystemModel(self)
+
+		#open klustaviewa
+		self.processViewa=QtCore.QProcess()
+		#dealing with the klusta environment (not perfect)
+		env = QtCore.QProcess.systemEnvironment()
+		itemToReplace=[item for item in env if item.startswith('PATH=')]
+		for item in itemToReplace:
+			newitem=item.replace('/anaconda/bin:','/anaconda/envs/klusta/bin:')
+			newitem=newitem.replace('/miniconda/bin:','/miniconda/envs/klusta/bin:')
+			env.remove(item)
+			env.append(newitem)
+		env.append("CONDA_DEFAULT_ENV=klusta")
+		self.processViewa.setEnvironment(env)
 		
 		#Layout
 		self.space=QtGui.QWidget()
@@ -81,5 +95,13 @@ class FolderView(QtGui.QWidget):
 		if self.folderModel.isDir(index):
 			return
 		path=self.folderModel.filePath(index)
-		QtGui.QDesktopServices.openUrl(QtCore.QUrl(path))
-		
+		if path.endswith(".kwik"):
+			self.open_klustaviewa(path)
+		else:
+			QtGui.QDesktopServices.openUrl(QtCore.QUrl(path))
+
+	def open_klustaviewa(self,path):
+		if self.processViewa.state()==QtCore.QProcess.Running:
+			QtGui.QMessageBox.warning(self,"error","Klustaviewa is already open",QtGui.QMessageBox.Ok)
+		else:
+			self.processViewa.startDetached("/home/david/anaconda/envs/klusta/bin/klustaviewa",[path])
