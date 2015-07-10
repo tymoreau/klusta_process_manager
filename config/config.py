@@ -22,8 +22,6 @@ IP="10.51.101.61"
 PORT=1234
 
 
-
-
 #------------------------------------------------------------------------------------------
 #    Main Window   
 #------------------------------------------------------------------------------------------
@@ -39,14 +37,8 @@ TITLE="Klusta Process Manager"
 
 DEFAULT_ICON="folder-grey.png"
 LENGTH_ID=3
-DATE_TIME_FORMAT="yyyy_MM_dd_HH_mm"
+DATE_TIME_FORMAT=["yyyy_MM_dd_HH_mm"]  #list, whole name should be like "animalXXX_date"
 EXP_PATH="/Experiments"
-
-#------------------------------------------------------------------------------------------
-#    Client: where to find server by default
-#------------------------------------------------------------------------------------------
-IP="10.51.101.29"
-PORT=1234
 
 #------------------------------------------------------------------------------------------
 #    Transfer:  > rsync RSYNC_ARG /source/ /destination     

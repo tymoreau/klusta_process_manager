@@ -66,13 +66,19 @@ class Experiment(QtCore.QObject):
 	# Convert a string into several date objects
 	# Mostly use to display date in FileBrowser
 	def string_to_date(self,date):
-		self.dateTime=QtCore.QDateTime().fromString(date,DATE_TIME_FORMAT)
-		if not self.dateTime.isValid():
+		valid=False
+		for dateFormat in DATE_TIME_FORMAT:
+			self.dateTime=QtCore.QDateTime().fromString(date,dateFormat)
+			if self.dateTime.isValid():
+				valid=True
+				break
+		if not valid:
 			return False
-		self.yearMonth=self.dateTime.toString(" MMM \n yyyy ")
-		self.day=self.dateTime.toString(" ddd dd ")
-		self.time=self.dateTime.toString(" hh:mm ")
-		return True
+		else:
+			self.yearMonth=self.dateTime.toString(" MMM \n yyyy ")
+			self.day=self.dateTime.toString(" ddd dd ")
+			self.time=self.dateTime.toString(" hh:mm ")
+			return True
 
 	#Automaticaly find a icon for the folder
 	def reset_folder_icon(self):

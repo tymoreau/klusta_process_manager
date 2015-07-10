@@ -20,7 +20,6 @@ class Database(object):
 	def _open(self):
 		return self.db.open()
 
-		
 	def close(self):
 		return self.db.close()
 
@@ -147,11 +146,13 @@ class Database(object):
 				self.delete_exp(exp)
 
 	def add_experiment(self,folder,animalID,expPathLocal,pathBackUPAnimal):
-		nameSplit=folder.split('_')
-		if len(nameSplit)!=6:
-			return
-		date="_".join(nameSplit[1:])
-		if not QtCore.QDateTime().fromString(date,self.dateTimeFormat).isValid():
+		date="_".join(folder.split('_')[1:])
+		valid=False
+		for possibleFormat in self.dateTimeFormat:
+			if QtCore.QDateTime().fromString(date,possibleFormat).isValid():
+				valid=True
+				break
+		if not valid:
 			return
 		if QtCore.QDir(pathBackUPAnimal).exists(folder):
 			expPathBackUP=QtCore.QDir(pathBackUPAnimal).filePath(folder)

@@ -221,7 +221,7 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 	def headerClick(self,isChecked):
 		self.beginResetModel()
 		if isChecked:
-			self.checkList=self.experimentList[:]
+			self.checkList=self.isCheckable[:]
 		else:
 			self.checkList=[]
 		self.changeChecked.emit(len(self.checkList))

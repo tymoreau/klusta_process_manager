@@ -15,7 +15,6 @@ def main():
 	QtGui.QApplication.setStyle("plastique")
 	app = QtGui.QApplication(sys.argv)
 	
-	
 	backUP=QtCore.QDir(BACK_UP)
 	root=QtCore.QDir(ROOT)
 	
