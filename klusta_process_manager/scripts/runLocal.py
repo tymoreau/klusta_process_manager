@@ -54,8 +54,6 @@ def main():
 	dbName="database_loc-"+ROOT.split('/')[-1]+"_backUP-"+BACK_UP.split('/')[-1]+".db"
 	dbPath=os.path.join(config.get_user_folder_path(),dbName)
 	database=Database(dbPath,ROOT,BACK_UP,EXP_PATH,config.DEFAULT_ICON,DATE_TIME_FORMAT,LENGTH_ID)
-	print("done")
-	print(type(database))
 
 	if database._open():
 		#Update/create database

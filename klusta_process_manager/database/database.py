@@ -6,8 +6,6 @@ from PyQt4 import QtCore,QtSql
 
 class Database(object):
 	def __init__(self,name,localPath,backUPPath,expPath,defaultIcon,dateTimeFormat,lengthID):
-		print("init")
-		print(backUPPath,localPath)
 		
 		self.db=QtSql.QSqlDatabase.addDatabase("QSQLITE","SQLITE")
 		self.db.setDatabaseName(name)
