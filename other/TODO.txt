@@ -1,15 +1,17 @@
 ---------Global
-# Add licence
-
-# closeEvent
+# Check licence
 
 --------Idea of new Features
 # simpler no database version 
 # look by date instead of animal
 
-# Include OpenEphys stuff
+# Include OpenEphys stuff (script for below idea ?)
 
+# remap process: launch any script/ list of instruction (rsync, then ...)
 
+# folder with script, database, userconfig
+
+# update to phy
 
 ---------Main Window
 # loading message if database too long - not needed
@@ -18,22 +20,26 @@
 ---------FileBrowser
 # check if folder root empty ?
 
-# allow user to pick a folder's' color manually
+# allow user to pick a folder's' color manually. How to save efficiently, not
+  losing in reinstall ?
 
-# keep list of animal where colors are done (so no need to launch thread)
+# display path to data 
+
+#keep list of animal done for color
 
 ---------ProcessManager --> might change a lot with phy
 # better detect crash
-# rethink buttons, put some in a menu or rightclick
+
 
 
 ---------Server
 # check what happens is client leaves while data is processing
 # give a name to client ? 
 # send stuff when client reconnect
+# kill to reimplement
 
 ---------database
-# datetime is not flewible (use '_')
+
 
 
 

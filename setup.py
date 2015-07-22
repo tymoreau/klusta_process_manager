@@ -1,8 +1,11 @@
 import os
 from setuptools import setup, find_packages
+from config import create_user_config_file
 
 def read(fname):
 	return open(os.path.join(os.path.dirname(__file__), fname)).read()
+
+create_user_config_file(override=False)
 
 setup(
 	name="klusta_process_manager",

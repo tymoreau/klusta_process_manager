@@ -9,7 +9,6 @@ from PyQt4 import QtCore,QtGui,QtNetwork
 
 from .processListModel import ProcessListModel
 from  klusta_process_manager.general.consoleView import ConsoleView
-from config import *
 
 #---------------------------------------------------------------------------------------------------------
 # Process Manager
@@ -17,7 +16,7 @@ from config import *
 class ProcessManager(QtGui.QWidget):
 	sendsMessage=QtCore.pyqtSignal(object)
 
-	def __init__(self,NASPath):
+	def __init__(self,NASPath,IP,PORT):
 		super(ProcessManager,self).__init__()
 		
 		#experimentModel
@@ -65,14 +64,17 @@ class ProcessManager(QtGui.QWidget):
 			newitem=newitem.replace('/miniconda/bin:','/miniconda/envs/klusta/bin:')
 			env.remove(item)
 			env.append(newitem)
-			env.append(PROGRAM)
 		env.append("CONDA_DEFAULT_ENV=klusta")
 		self.process.setEnvironment(env)
 		
 		#Layout
 		self._buttons()
 		self.update_buttons(False)
-		self._edits()
+		self.label_ip=QtGui.QLabel("IP")
+		self.edit_ip=QtGui.QLineEdit(IP)
+		self.label_port=QtGui.QLabel("Port")
+		self.edit_port=QtGui.QLineEdit(str(PORT))
+		self.edit_port.setValidator(QtGui.QIntValidator(1,65535,self))
 		self._frames()
 		self._layout()
 		
@@ -108,13 +110,6 @@ class ProcessManager(QtGui.QWidget):
 			boolean=False
 		self.button_processHere.setEnabled(boolean)
 		self.button_processServer.setEnabled(boolean)
-		
-	def _edits(self):
-		self.label_ip=QtGui.QLabel("IP")
-		self.edit_ip=QtGui.QLineEdit(IP)
-		self.label_port=QtGui.QLabel("Port")
-		self.edit_port=QtGui.QLineEdit(str(PORT))
-		self.edit_port.setValidator(QtGui.QIntValidator(1,65535,self))
 		
 	def _frames(self):
 		#server frame (not connected)

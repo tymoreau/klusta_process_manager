@@ -5,8 +5,10 @@ sip.setapi('QString',2)
 from PyQt4 import QtCore,QtSql
 
 class Database(object):
-	
 	def __init__(self,name,localPath,backUPPath,expPath,defaultIcon,dateTimeFormat,lengthID):
+		print("init")
+		print(backUPPath,localPath)
+		
 		self.db=QtSql.QSqlDatabase.addDatabase("QSQLITE","SQLITE")
 		self.db.setDatabaseName(name)
 
@@ -33,7 +35,7 @@ class Database(object):
 					self.db.exec_("Drop table %s"%table)
 				#Create tables
 				self.db.exec_("create table Animal(animalID TEXT PRIMARY KEY UNIQUE, animalType TEXT, ID INT, pathLocal TEXT UNIQUE, pathBackUP TEXT UNIQUE, pathToExp TEXT)")
-				self.db.exec_("create table Experiment(folderName TEXT PRIMARY KEY UNIQUE, dateTime TEXT, animalID TEXT, icon TEXT, pathLocal TEXT UNIQUE, pathBackUP TEXT, FOREIGN KEY(animalID) REFERENCES Animal(animalID))")
+				self.db.exec_("create table Experiment(folderName TEXT PRIMARY KEY UNIQUE, dateTime TEXT, yearMonth TEXT, day TEXT, time TEXT, animalID TEXT, icon TEXT, pathLocal TEXT UNIQUE, pathBackUP TEXT, FOREIGN KEY(animalID) REFERENCES Animal(animalID))")
 				
 		self.db.transaction()
 		#Update table animal
@@ -78,7 +80,6 @@ class Database(object):
 		query.bindValue(":pathToExp",self.expPath)
 		query.exec_()
 
-
 	#Delete an entry of table Animal, and the corresponding experiments of table Experiment
 	def delete_animal(self,animalID):
 		self.db.exec_("Delete From Animal Where animalID='%s'"%animalID)
@@ -117,7 +118,7 @@ class Database(object):
 			query.exec_("Select * from Experiment Where animalID='%s'"%animal)
 		l=[]
 		while query.next():
-			l.append({"folderName":query.value(0), "dateTime":query.value(1), "animalID":query.value(2), "icon":query.value(3), "pathLocal":query.value(4), "pathBackUP":query.value(5)})
+			l.append({"folderName":query.value(0), "dateTime":query.value(1),"yearMonth":query.value(2),"day":query.value(3), "time":query.value(4), "animalID":query.value(5), "icon":query.value(6), "pathLocal":query.value(7), "pathBackUP":query.value(8)})
 		return l
 
 #--------------------------------------------------------------------------------------------------------- 
@@ -145,23 +146,42 @@ class Database(object):
 			for exp in expList:
 				self.delete_exp(exp)
 
-	def add_experiment(self,folder,animalID,expPathLocal,pathBackUPAnimal):
-		date="_".join(folder.split('_')[1:])
+	# Convert a string into several date objects
+	# Mostly use to display date in FileBrowser
+	def string_to_date(self,date):
 		valid=False
-		for possibleFormat in self.dateTimeFormat:
-			if QtCore.QDateTime().fromString(date,possibleFormat).isValid():
+		for dateFormat in self.dateTimeFormat:
+			self.dateTime=QtCore.QDateTime().fromString(date,dateFormat)
+			if self.dateTime.isValid():
 				valid=True
 				break
 		if not valid:
-			return
+			return None
+		else:
+			yearMonth=self.dateTime.toString(" MMM \n yyyy ")
+			day=self.dateTime.toString(" ddd dd ")
+			time=self.dateTime.toString(" hh:mm ")
+			return yearMonth,day,time
+
+	def add_experiment(self,folder,animalID,expPathLocal,pathBackUPAnimal):
+		dateString="_".join(folder.split('_')[1:])
+		result=self.string_to_date(dateString)
+		if result is None:
+			return  #date not valid
+		else:
+			yearMonth,day,time=result
+		
 		if QtCore.QDir(pathBackUPAnimal).exists(folder):
 			expPathBackUP=QtCore.QDir(pathBackUPAnimal).filePath(folder)
 		else:
 			expPathBackUP="unknown"
 		query=QtSql.QSqlQuery(self.db)
-		query.prepare("Insert into Experiment(folderName, dateTime, animalID, icon, pathLocal, pathBackUP) Values (:folderName, :dateTime, :animalID, :icon, :pathLocal, :pathBackUP)")
+		query.prepare("Insert into Experiment(folderName, dateTime, yearMonth, day, time, animalID, icon, pathLocal, pathBackUP) Values (:folderName, :dateTime, :yearMonth, :day, :time, :animalID, :icon, :pathLocal, :pathBackUP)")
 		query.bindValue(":folderName",folder)
-		query.bindValue(":dateTime",date)
+		query.bindValue(":dateTime",dateString)
+		query.bindValue(":yearMonth",yearMonth)
+		query.bindValue(":day",day)
+		query.bindValue(":time",time)
 		query.bindValue(":animalID",animalID)
 		query.bindValue(":icon",self.defaultIcon)
 		query.bindValue(":pathLocal",expPathLocal)

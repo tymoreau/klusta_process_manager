@@ -9,7 +9,7 @@ sip.setapi('QString',2)
 import PyQt4.QtCore as QtCore
 
 from .klustaFolder import KlustaFolder
-from config import *
+from config import RSYNC_ARG_TO_BACKUP, RSYNC_ARG_FROM_BACKUP
 
 #----------------------------------------------------------------------------------------------
 # Experiment (=one folder)
@@ -17,7 +17,7 @@ from config import *
 class Experiment(QtCore.QObject):
 	
 	#Init an experiment from a dictionnary (result of a database query)
-	def __init__(self,expInfoDict,parent=None):
+	def __init__(self,expInfoDict, parent=None):
 		super(Experiment,self).__init__(parent)
 		self.state="--"
 		
@@ -30,16 +30,10 @@ class Experiment(QtCore.QObject):
 		self.pathBackUP=expInfoDict["pathBackUP"]
 		self.pathLocal=QtCore.QFileInfo(expInfoDict["pathLocal"]).absoluteFilePath()
 		self.animalID=expInfoDict["animalID"]
-		self.dateTime=None
-		self.yearMonth=None
-		self.dayTime=None
-		
-		#Check if date is correct
-		#Should be already checked in database
-		self.isValid=self.string_to_date(expInfoDict["dateTime"])
-		if not self.isValid:
-			self.state="Date not valid"
-			return
+		self.yearMonth=expInfoDict["yearMonth"]
+		self.day=expInfoDict["day"]
+		self.time=expInfoDict["time"]
+		self.dateTime=QtCore.QDateTime().fromString(self.yearMonth+self.day+self.time," MMM \n yyyy  ddd dd  hh:mm ")
 		
 		#Local folder
 		self.folder=KlustaFolder(self.pathLocal,icon)
@@ -57,28 +51,9 @@ class Experiment(QtCore.QObject):
 				self.state="Could not find folder %s in BACK_UP"%self.folderName
 				self.pathBackUP=None
 
-
 	#comparison between object (lt=less than)
 	def __lt__(self,other):
 		return self.dateTime<other.dateTime
-		
-    #----------------------------------------------------------------------------------------------
-	# Convert a string into several date objects
-	# Mostly use to display date in FileBrowser
-	def string_to_date(self,date):
-		valid=False
-		for dateFormat in DATE_TIME_FORMAT:
-			self.dateTime=QtCore.QDateTime().fromString(date,dateFormat)
-			if self.dateTime.isValid():
-				valid=True
-				break
-		if not valid:
-			return False
-		else:
-			self.yearMonth=self.dateTime.toString(" MMM \n yyyy ")
-			self.day=self.dateTime.toString(" ddd dd ")
-			self.time=self.dateTime.toString(" hh:mm ")
-			return True
 
 	#Automaticaly find a icon for the folder
 	def reset_folder_icon(self):
@@ -112,19 +87,6 @@ class Experiment(QtCore.QObject):
 			self.folder.create_files(prmModel=prmModel,prbModel=prbModel,rawData=rawData)
 		else:
 			self.state="raw data not found"
-			
-		
-	#------------------------------------------------------------------------------------------------------
-	#find path in backUP
-	def find_path_backUP(self):
-		if QtCore.QDir(BACK_UP+"/"+self.animalID).exists():
-			pathBackUP=BACK_UP+"/"+self.animalID+EXP_PATH+"/"+self.folderName
-			if QtCore.QDir(pathBackUP).exists():
-				self.pathBackUP=pathBackUP
-				self.hasChange=True
-				return True
-		else:
-			return False
 
 	def is_done_and_backUP(self):
 		return self.backUPFolder.has_kwik()

@@ -13,9 +13,9 @@ from klusta_process_manager.fileBrowser import FileBrowser
 from klusta_process_manager.experiment import Experiment
 
 #Import parameter
-from config import *
+from config import WIDTH, HEIGHT, MIN_WIDTH, MIN_HEIGHT, TITLE
 
-#-------------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
 # Receive message an print them 
 # Keep only 3 lines
 class LogView(QtGui.QWidget):
@@ -33,12 +33,15 @@ class LogView(QtGui.QWidget):
 		self.listMessage=self.listMessage[-3:]
 		self.label.setText("\n".join(self.listMessage))
 
-#-------------------------------------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------------
 class MainWindow(QtGui.QWidget):
 	sendsMessage=QtCore.pyqtSignal(object)
 	
-	def __init__(self,database):
+	def __init__(self,database,ROOT,BACK_UP, IP_SERVER, PORT_SERVER):
 		super(MainWindow,self).__init__()
+		self.rootPath=ROOT
+		self.backUPPath=BACK_UP
+		
 		#database
 		self.database=database
 		
@@ -57,7 +60,7 @@ class MainWindow(QtGui.QWidget):
 		self.fileBrowser.animalComboBox.currentIndexChanged.connect(self.on_animal_change)
 		self.fileBrowser.set_animalComboBox(self.animalFolderList)
 		
-		self.processManager=ProcessManager(BACK_UP)
+		self.processManager=ProcessManager(BACK_UP,IP_SERVER,PORT_SERVER)
 		self.logView=LogView(self)
 
 		#Connect views
@@ -86,8 +89,8 @@ class MainWindow(QtGui.QWidget):
 		
 	#TODO
 	def on_directory_change(self,path):
-		if path==ROOT:
-			print(ROOT, "has changed")
+		if path==self.rootPath:
+			print(self.rootPath, "has changed")
 			#check for new/deleted animal (database + list)
 		else:
 			folderName=QtCore.QFileInfo(path).fileName()
