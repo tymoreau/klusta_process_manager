@@ -26,7 +26,7 @@ def create_user_config_file(override=False):
 
 def get_user_folder_path():
 	homePath=os.path.expanduser("~")
-	dirPath=os.path.join(homePath,"processManagerScripts")
+	dirPath=os.path.join(homePath,"processManager")
 	return dirPath
 
 def get_user_config_path():

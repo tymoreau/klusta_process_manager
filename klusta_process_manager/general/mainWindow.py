@@ -148,7 +148,6 @@ class MainWindow(QtGui.QWidget):
 					exp=Experiment(expInfoDict,parent=self)
 					self.experimentDict[folderName]=exp
 				expList.append(self.experimentDict[folderName])
-		print(expList)
 		if expList:
 			self.processManager.add_experiments_on_server(expList)
 				
