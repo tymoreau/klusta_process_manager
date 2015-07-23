@@ -1,11 +1,14 @@
 import sys
 import signal
+import os
 
 #QT
 import sip
 sip.setapi('QVariant',2)
 sip.setapi('QString',2)
 from PyQt4 import QtCore,QtGui
+
+from config import get_user_folder_path
 
 #-------------------------------------------------------------------------------------------------------------
 # Custom Header
@@ -107,6 +110,20 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 				self.endInsertRows()
 			if exp in self.isCheckable:
 				exp.refresh_state()
+		self.experimentList.sort()
+		self.updateCheck()
+		self.endResetModel()
+
+	def add_experiments_on_server(self,expList):
+		self.beginResetModel()
+		assert len(self.experimentList)==0
+		for exp in expList:
+			row=len(self.experimentList)
+			self.beginInsertRows(QtCore.QModelIndex(),row,row)
+			self.experimentList.append(exp)
+			self.onServer[exp.folderName]=exp
+			exp.state="Unknown: please connect to server"
+			self.endInsertRows()
 		self.experimentList.sort()
 		self.updateCheck()
 		self.endResetModel()
@@ -431,7 +448,7 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 			exp=self.onServer[folderName]
 			exp.state="/!\ Server closed, state unknown"
 			self.isCheckable.append(exp)
-			del self.onServer[folderName]
+		self.onServer={}
 
 	def server_update_state(self,stateList):
 		self.beginResetModel()
@@ -440,6 +457,16 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 			folderName=stateList[i]
 			state=stateList[i+1]
 			state=state.replace("local","server")
-			self.onServer[folderName].state=state
+			try:
+				self.onServer[folderName].state=state
+			except KeyError:
+				pass
 			i+=2
 		self.endResetModel()
+
+	def on_close(self):
+		userPath=get_user_folder_path()
+		filePath=os.path.join(userPath,"experimentListServer.save")
+		with open(filePath,"w") as f:
+			for folderName in self.onServer:
+				f.write(folderName+"\n")

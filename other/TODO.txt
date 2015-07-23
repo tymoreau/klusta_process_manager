@@ -2,8 +2,7 @@
 # Check licence
 
 --------Idea of new Features
-# simpler no database version 
-# look by date instead of animal
+# look by date instead of animal ?
 
 # Include OpenEphys stuff (script for below idea ?)
 
@@ -12,22 +11,18 @@
 # update to phy
 
 ---------Main Window
-# loading message if database too long - not needed
+# loading message if database too long - not needed ?
 
 
 ---------FileBrowser
-# check if folder root empty ?
 
 # allow user to pick a folder's' color manually. How to save efficiently, not
   losing in reinstall ?
-
-# display path to data 
 
 #keep list of animal done for color
 
 ---------ProcessManager --> might change a lot with phy
 # better detect crash
-
 
 
 ---------Server

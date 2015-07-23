@@ -9,15 +9,15 @@ from PyQt4 import QtCore,QtGui,QtNetwork
 
 from .processListModel import ProcessListModel
 from  klusta_process_manager.general.consoleView import ConsoleView
-
 #---------------------------------------------------------------------------------------------------------
 # Process Manager
 #---------------------------------------------------------------------------------------------------------
 class ProcessManager(QtGui.QWidget):
 	sendsMessage=QtCore.pyqtSignal(object)
 
-	def __init__(self,NASPath,IP,PORT):
-		super(ProcessManager,self).__init__()
+	def __init__(self,NASPath,IP,PORT,BACK_UP, parent=None):
+		super(ProcessManager,self).__init__(parent)
+		self.backUProotPath=BACK_UP
 		
 		#experimentModel
 		self.model= ProcessListModel()
@@ -161,6 +161,9 @@ class ProcessManager(QtGui.QWidget):
 	def add_experiments(self,expList):
 		self.model.add_experiments(expList)
 
+	def add_experiments_on_server(self,expList):
+		self.model.add_experiments_on_server(expList)
+
 	def clear_list(self):
 		nbRemove=self.model.clear()
 		self.sendsMessage.emit("Clear: removed %i experiment(s)" %nbRemove)
@@ -213,7 +216,7 @@ class ProcessManager(QtGui.QWidget):
 	def try_send(self):
 		if self.tcpSocket.isValid():
 			pathBackUPList=self.model.list_to_send_server()
-			pathBackUPList.insert(0,BACK_UP)
+			pathBackUPList.insert(0,self.backUProotPath)
 			if len(pathBackUPList)>0:
 				block=self.send_protocol("processList",List=pathBackUPList)
 				if block!=0:
@@ -387,6 +390,7 @@ class ProcessManager(QtGui.QWidget):
 				self.process.finished.disconnect(self.try_process)
 				self.kill_process()
 				self.kill_processSync()
+		self.model.on_close()
 		self.tcpSocket.disconnectFromHost()
 		return True
 		

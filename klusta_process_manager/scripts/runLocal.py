@@ -13,7 +13,7 @@ from klusta_process_manager.database import Database
 import config
 
 def main():
-	QtGui.QApplication.setStyle("plastique")
+	QtGui.QApplication.setStyle("cleanlooks")
 	app = QtGui.QApplication(sys.argv)
 
 	#user config file

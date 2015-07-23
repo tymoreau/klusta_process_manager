@@ -1,5 +1,6 @@
 import sys
 import signal
+import os
  
 #QT
 import sip
@@ -13,7 +14,7 @@ from klusta_process_manager.fileBrowser import FileBrowser
 from klusta_process_manager.experiment import Experiment
 
 #Import parameter
-from config import WIDTH, HEIGHT, MIN_WIDTH, MIN_HEIGHT, TITLE
+from config import WIDTH, HEIGHT, MIN_WIDTH, MIN_HEIGHT, TITLE, get_user_folder_path
 
 #------------------------------------------------------------------------------------------------------------
 # Receive message an print them 
@@ -56,11 +57,11 @@ class MainWindow(QtGui.QWidget):
 		
 		#FileBrowser
 		self.animalFolderList=self.database.get_animalID_list(notEmpty=True)
-		self.fileBrowser=FileBrowser()
+		self.fileBrowser=FileBrowser(ROOT,self)
 		self.fileBrowser.animalComboBox.currentIndexChanged.connect(self.on_animal_change)
 		self.fileBrowser.set_animalComboBox(self.animalFolderList)
 		
-		self.processManager=ProcessManager(BACK_UP,IP_SERVER,PORT_SERVER)
+		self.processManager=ProcessManager(BACK_UP,IP_SERVER,PORT_SERVER,BACK_UP, self)
 		self.logView=LogView(self)
 
 		#Connect views
@@ -69,6 +70,9 @@ class MainWindow(QtGui.QWidget):
 		#Connect message to log
 		self.processManager.sendsMessage.connect(self.logView.add_message)
 		self.sendsMessage.connect(self.logView.add_message)
+
+		#read save
+		self.add_to_process_manager_from_save()
 
 		#Layout
 		splitterVertical=QtGui.QSplitter(QtCore.Qt.Vertical)
@@ -126,6 +130,28 @@ class MainWindow(QtGui.QWidget):
 			exp=self.experimentDict[item.data()]
 			expList.append(exp)
 		self.processManager.add_experiments(expList)
+
+	def add_to_process_manager_from_save(self):
+		userPath=get_user_folder_path()
+		filePath=os.path.join(userPath,"experimentListServer.save")
+		expList=[]
+		if not os.path.exists(filePath):
+			return
+		with open(filePath,"r") as f:
+			for folderName in f:
+				folderName=folderName.strip()
+				if folderName not in self.experimentDict:
+					expInfoDict=self.database.get_experimentDict(folderName)
+					if expInfoDict is None:
+						print("not ok")
+						continue
+					exp=Experiment(expInfoDict,parent=self)
+					self.experimentDict[folderName]=exp
+				expList.append(self.experimentDict[folderName])
+		print(expList)
+		if expList:
+			self.processManager.add_experiments_on_server(expList)
+				
 
 	def closeEvent(self,event):
 		expList=self.experimentDict.values()

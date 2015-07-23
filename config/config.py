@@ -22,6 +22,7 @@ def create_user_config_file(override=False):
 		f.write("length_id=3\n")
 		f.write("dateTime_format=['yyyy_MM_dd_HH_mm']\n")
 		f.write("path_from_animal_to_exp='/Experiments'\n")
+		
 
 def get_user_folder_path():
 	homePath=os.path.expanduser("~")
@@ -94,6 +95,7 @@ RSYNC_ARG_FROM_BACKUP_TO_SERVER=["-rlzutO","--prune-empty-dirs","--include","*/"
 #------------------------------------------------------------------------------------------
 SERVER_PATH="../test/dataServer"
 BACK_UP_PATH='../test/fakeNAS'
+PORT=1234
 
 
 

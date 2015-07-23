@@ -87,12 +87,6 @@ class ExperimentModelServer(QtCore.QAbstractTableModel):
 				elif section==2:
 					return "State"
 
-	def update_exp(self,exp):
-		pass
-
-	def clear(self):
-		pass
-
 	def sync_one_experiment(self,process):
 		if self.expSyncing is None:
 			if len(self.toBackUP)>0:

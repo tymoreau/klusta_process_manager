@@ -80,8 +80,7 @@ class ServerTCP(QtGui.QWidget):
 
 	def _layout(self):
 		self.button_kill=QtGui.QPushButton("Kill current")
-		self.button_kill.setEnabled(False)
-		#self.button_kill.clicked.connect(self.kill_current)
+		self.button_kill.clicked.connect(self.kill_current)
 		self.button_clear=QtGui.QPushButton("Clear")
 		self.button_clear.clicked.connect(self.clear)
 		self.label_path=QtGui.QLabel("Data: "+SERVER_PATH)
@@ -114,7 +113,6 @@ class ServerTCP(QtGui.QWidget):
 			#check if old/new client
 			if ip in self.clientDict.keys():
 				self.clientDict[ip].update_socket(newTcpSocket)
-				#send data to client
 			else:
 				self.clientDict[ip]=Client(newTcpSocket)
 				self.clientDict[ip].hasNewPaths.connect(self.client_has_new_paths)
@@ -129,7 +127,7 @@ class ServerTCP(QtGui.QWidget):
 			self.label_connectedClients.setText("Connected: "+", ".join(ipList))
 
 	def clear(self):
-		pass
+		pass #clear crash ?
 	
 	#(try to) close everything properly
 	def close(self):
@@ -201,7 +199,6 @@ class ServerTCP(QtGui.QWidget):
 				exitcode=42
 			if self.model.process_is_done(exitcode):
 				self.try_sync()
-				#self.client.send_pathToState()
 			if self.model.process_one_experiment(self.process):
 				self.console.separator(self.model.expProcessing)
 
@@ -218,6 +215,14 @@ class ServerTCP(QtGui.QWidget):
 		byteArray=self.process.readAll()
 		string="".join(byteArray)
 		self.console.display(string)
+
+	def kill_current(self):
+		if self.model.expProcessing is not None:
+			self.process.waitForFinished(50)
+			if self.process.state()==QtCore.QProcess.Running:
+				self.process.kill()
+				self.wasKill=True
+				self.process.waitForFinished(1000)
 	
 	def closeEvent(self,event):
 		pass

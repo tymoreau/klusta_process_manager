@@ -166,7 +166,7 @@ class Model(QtCore.QAbstractTableModel):
 #--------------------------------------------------------------------------------------------------------------
 class FileBrowser(QtGui.QWidget):
 	
-	def __init__(self,parent=None):
+	def __init__(self,ROOT,parent=None):
 		super(FileBrowser,self).__init__(parent)
 
 		#Combo Box
@@ -190,7 +190,8 @@ class FileBrowser(QtGui.QWidget):
 		self.button_loadModels.clicked.connect(self.loadModels)
 		
 		#label
-		self.label_load=QtGui.QLabel('')
+		self.label_path=QtGui.QLabel(ROOT+os.sep)
+		self.label_load=QtGui.QLabel('          ')
 		self.label_prmModel=QtGui.QLabel('no prm model')
 		self.label_prbModel=QtGui.QLabel('no prb model')
 		
@@ -198,19 +199,26 @@ class FileBrowser(QtGui.QWidget):
 		self.prbModel=QtCore.QFileInfo()
 		
 		#Layout
-		grid=QtGui.QGridLayout()
-		grid.addWidget(self.button_loadModels,0,0,2,1)
-		grid.addWidget(self.label_prmModel,0,1)
-		grid.addWidget(self.label_prbModel,1,1)
-		grid.addWidget(self.button_createFiles,0,2,2,1)
-		hbox=QtGui.QHBoxLayout()
-		hbox.addWidget(self.button_add)
-		hbox.addLayout(grid)
-		hbox.addWidget(self.label_load)
+		hboxT=QtGui.QHBoxLayout()
+		hboxT.addWidget(self.label_path)
+		hboxT.addWidget(self.animalComboBox)
+		hboxT.addStretch()
+
+		vboxP=QtGui.QVBoxLayout()
+		vboxP.addWidget(self.label_prmModel)
+		vboxP.addWidget(self.label_prbModel)
+
+		hboxB=QtGui.QHBoxLayout()
+		hboxB.addWidget(self.button_add)
+		hboxB.addWidget(self.button_loadModels)
+		hboxB.addLayout(vboxP)
+		hboxB.addWidget(self.button_createFiles)
+		hboxB.addWidget(self.label_load)
+		
 		vbox=QtGui.QVBoxLayout()
-		vbox.addWidget(self.animalComboBox)
+		vbox.addLayout(hboxT)
 		vbox.addWidget(self.view)
-		vbox.addLayout(hbox)
+		vbox.addLayout(hboxB)
 		self.setLayout(vbox)
 		
 	def set_animalComboBox(self,animalList):

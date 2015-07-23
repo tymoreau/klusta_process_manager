@@ -45,6 +45,10 @@ class Client(QtCore.QObject):
 		self.dataStream=QtCore.QDataStream(self.tcpSocket)
 		self.dataStream.setVersion(QtCore.QDataStream.Qt_4_0)
 		self.connected=True
+		#send data if needed
+		self.send_update_state()
+		self.send_expDone()
+		self.send_expFail()
 		
 	#client disconnected
 	def on_disconnect(self):

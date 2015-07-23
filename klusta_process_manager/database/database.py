@@ -119,6 +119,17 @@ class Database(object):
 			l.append({"folderName":query.value(0), "dateTime":query.value(1),"yearMonth":query.value(2),"day":query.value(3), "time":query.value(4), "animalID":query.value(5), "icon":query.value(6), "pathLocal":query.value(7), "pathBackUP":query.value(8)})
 		return l
 
+	def get_experimentDict(self,folderName):
+		print("query",folderName)
+		query=QtSql.QSqlQuery(self.db)
+		query.exec_("Select * from Experiment Where folderName='%s'"%folderName)
+		while(query.next()):
+			print("enter")
+			expDict={"folderName":query.value(0), "dateTime":query.value(1),"yearMonth":query.value(2),"day":query.value(3), "time":query.value(4), "animalID":query.value(5), "icon":query.value(6), "pathLocal":query.value(7), "pathBackUP":query.value(8)}
+			return expDict
+		return None
+		
+
 #--------------------------------------------------------------------------------------------------------- 
 # Experiment table - update functions
 #---------------------------------------------------------------------------------------------------------

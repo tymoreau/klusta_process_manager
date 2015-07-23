@@ -30,11 +30,16 @@ class Experiment(QtCore.QObject):
 		self.pathBackUP=expInfoDict["pathBackUP"]
 		self.pathLocal=QtCore.QFileInfo(expInfoDict["pathLocal"]).absoluteFilePath()
 		self.animalID=expInfoDict["animalID"]
-		self.yearMonth=expInfoDict["yearMonth"]
-		self.day=expInfoDict["day"]
-		self.time=expInfoDict["time"]
+		try:
+			self.yearMonth=expInfoDict["yearMonth"]
+			self.day=expInfoDict["day"]
+			self.time=expInfoDict["time"]
+		except KeyError: #server side
+			self.yearMonth="--"
+			self.day="--"
+			self.time="--"
 		self.dateTime=QtCore.QDateTime().fromString(self.yearMonth+self.day+self.time," MMM \n yyyy  ddd dd  hh:mm ")
-		
+			
 		#Local folder
 		self.folder=KlustaFolder(self.pathLocal,icon)
 		if not self.folder.exists():
