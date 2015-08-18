@@ -25,7 +25,7 @@ application. Open it later and reconnect to the server to see the progress.
     the regular format and the openephys format
 
 - On server side:
-    - don't deleta .dat file if klusta crash
+    - don't delete .dat file if klusta crash
     - "kill" button reimplemented
 
 
@@ -43,14 +43,21 @@ With Miniconda or Anaconda install, do:
 Install
 -------
 
-1) Get source from DropBox: copy-paste zip file, unzip
+1) Get source from DropBox: copy-paste zip file, unzip  OR from Github
 
 2) In a terminal, in the application's folder (where there is a setup.py file):
 > python setup.py install
 
 3) The install should have created a folder "processManager" in your home.
-Inside, you'll find a file userConfig.py where you can change default
-parameter.
+Inside, you'll find a file **userConfig.py** where you can **change default
+parameters**.
+
+In this folder, the application is also going to save data in small .db or
+.save files. If you encounter bugs, you can try to delete those files and
+restart the application.
+For now, a database (.db) is created for a given path_to_data and
+path_to_back_up. An experimentListServer.save is created if you close the app
+while processing experiments and the server.
 
 
 To launch
@@ -58,6 +65,25 @@ To launch
 
 In a terminal, anywhere:
 > klusta_process_manager
+
+
+RSync
+----
+
+Synchronisation between local data and back-up is made with command line
+rsync. The arguments of rsync are in appFolder/config/config.py, end of the
+file. You can change them but you need to re-install the app after any change
+for it to be effective.
+
+By default, three different rsync lines:
+
+- From local to back-up: `rsync -rlzutO`
+
+- From back-up to local: `rsync -rlzutO --exlude=*dat`
+
+- From back-up to computer server:
+
+        rsync -rlzutO --prune-empty-dirs --include */ --include=*.prm --include=*.prb --include=*.dat --exclude=*
 
 
 Server
