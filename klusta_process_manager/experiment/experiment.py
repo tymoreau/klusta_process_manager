@@ -50,11 +50,8 @@ class Experiment(QtCore.QObject):
 		#BackUP folder
 		self.backUPFolder=KlustaFolder(self.pathBackUP)
 		if not self.backUPFolder.exists():
-			if self.find_path_backUP():
-				self.backUPFolder=KlustaFolder(self.pathBackUP)
-			else:
-				self.state="Could not find folder %s in BACK_UP"%self.folderName
-				self.pathBackUP=None
+			self.state="Could not find folder %s in BACK_UP"%self.folderName
+			self.pathBackUP=None
 
 	#comparison between object (lt=less than)
 	def __lt__(self,other):

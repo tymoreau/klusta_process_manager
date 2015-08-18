@@ -4,11 +4,15 @@
 --------Idea of new Features
 # look by date instead of animal ?
 
+# no database version / simpler folderview (other lab)
+
 # Include OpenEphys stuff (script for below idea ?)
 
 # remap process: launch any script/ list of instruction (rsync, then ...)
 
 # update to phy
+
+# prb creator
 
 ---------Main Window
 # loading message if database too long - not needed ?

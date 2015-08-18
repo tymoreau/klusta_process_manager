@@ -32,7 +32,7 @@ class Database(object):
 				for table in tables:
 					self.db.exec_("Drop table %s"%table)
 				#Create tables
-				self.db.exec_("create table Animal(animalID TEXT PRIMARY KEY UNIQUE, animalType TEXT, ID INT, pathLocal TEXT UNIQUE, pathBackUP TEXT UNIQUE, pathToExp TEXT)")
+				self.db.exec_("create table Animal(animalID TEXT PRIMARY KEY UNIQUE, animalType TEXT, ID INT, pathLocal TEXT UNIQUE, pathBackUP TEXT, pathToExp TEXT)")
 				self.db.exec_("create table Experiment(folderName TEXT PRIMARY KEY UNIQUE, dateTime TEXT, yearMonth TEXT, day TEXT, time TEXT, animalID TEXT, icon TEXT, pathLocal TEXT UNIQUE, pathBackUP TEXT, FOREIGN KEY(animalID) REFERENCES Animal(animalID))")
 				
 		self.db.transaction()
@@ -57,6 +57,7 @@ class Database(object):
 				else:
 					animalPathLocal=rootFolder.filePath(folder)
 					self.add_animal(folder,animalPathLocal)
+
 		#Remove deleted one
 		if len(animalList)>0:
 			for animal in animalList:
@@ -68,7 +69,7 @@ class Database(object):
 		animalPathBackUP=self.backUPPath+"/"+folderName
 		if not QtCore.QDir(animalPathBackUP).exists():
 			animalPathBackUP="unknown"
-		
+
 		query.prepare("Insert into Animal(animalID,animalType,ID,pathLocal,pathBackUP,pathToExp) Values (:animalID,:animalType,:ID,:pathLocal,:pathBackUP,:pathToExp)")
 		query.bindValue(":animalID",folderName)
 		query.bindValue(":animalType",folderName[:-self.lengthID])
@@ -78,6 +79,7 @@ class Database(object):
 		query.bindValue(":pathToExp",self.expPath)
 		query.exec_()
 
+		
 	#Delete an entry of table Animal, and the corresponding experiments of table Experiment
 	def delete_animal(self,animalID):
 		self.db.exec_("Delete From Animal Where animalID='%s'"%animalID)
