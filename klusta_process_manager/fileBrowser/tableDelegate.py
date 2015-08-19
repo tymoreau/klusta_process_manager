@@ -76,7 +76,7 @@ class TableDelegate(QtGui.QStyledItemDelegate):
 			painter.drawLine(line)
 		#Draw Text
 		painter.setPen(QtCore.Qt.black)
-		if col==3:
+		if col==3 or col==2:
 			return super(TableDelegate,self).paint(painter,option,index)
 		elif col==0 and (row in self.middleWeek):
 			painter.drawText(option.rect,QtCore.Qt.AlignVCenter,index.data())
@@ -84,9 +84,9 @@ class TableDelegate(QtGui.QStyledItemDelegate):
 			rowHeight=self.sizeHint(option,index).height()//2 +5
 			option.rect.translate(0,rowHeight)
 			painter.drawText(option.rect,QtCore.Qt.AlignVCenter,index.data())
-		elif (col==1 or col==2) and (row in self.middleDay):
+		elif col==1  and (row in self.middleDay):
 			painter.drawText(option.rect,QtCore.Qt.AlignVCenter,index.data())
-		elif (col==1 or col==2) and (row in self.middleDayOdd):
+		elif col==1  and (row in self.middleDayOdd):
 			rowHeight=self.sizeHint(option,index).height()//2 +7
 			option.rect.translate(0,rowHeight)
 			painter.drawText(option.rect,QtCore.Qt.AlignVCenter,index.data())
