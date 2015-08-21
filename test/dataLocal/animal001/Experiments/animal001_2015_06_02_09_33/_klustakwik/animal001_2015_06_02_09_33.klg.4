@@ -1,0 +1,214 @@
+FileBase	animal001_2015_06_02_09_33
+ElecNo	4
+UseFeatures	
+DropLastNFeatures	0
+UseDistributional	1
+MaskStarts	500
+MinClusters	100
+MaxClusters	110
+MaxPossibleClusters	1000
+nStarts	1
+StartCluFile	
+SplitEvery	40
+SplitFirst	20
+PenaltyK	0.000000
+PenaltyKLogN	1.000000
+Subset	1
+FullStepEvery	20
+MaxIter	10000
+RandomSeed	1
+Debug	0
+SplitInfo	1
+Verbose	1
+DistDump	0
+DistThresh	6.907755
+ChangedThresh	0.050000
+Log	1
+SaveTempCluEveryIter	0
+Screen	1
+PriorPoint	1
+SaveSorted	0
+SaveCovarianceMeans	0
+UseMaskedInitialConditions	0
+AssignToFirstClosestMask	0
+RamLimitGB	0.000000
+AlwaysSplitBimodal	0
+PointsForClusterMask	10.000000
+MinMaskOverlap	0.000000
+help	0
+help	0
+Starting KlustaKwik. Version: 0.3.0-nogit
+Setting RAM limit to total physical memory, 15.61 GB.
+-------------------------------------------------------------------------
+Using Distributional EM with Maskstarts
+NOTE: Maskstarts overides above values of MinClusters and MaxClusters                 
+MinClusters = 500 
+MaxClusters = 500 
+ 
+Expected memory usage by array (largest first):
+
+Array Cov will use between 0.00 and 0.01 GB.
+- 8 bytes per element (scalar), 625000 elements when full.
+- Memory usage scales as MaxPossibleClusters*nDims*nDims.
+Array LogP will use between 0.00 and 0.00 GB.
+- 8 bytes per element (scalar), 65000 elements when full.
+- Memory usage scales as MaxPossibleClusters*nPoints.
+Array AllVector2Mean will use between 0.00 and 0.00 GB.
+- 8 bytes per element (scalar), 1625 elements when full.
+- Memory usage scales as nPoints*nDims.
+Array CorrectionTerm will use between 0.00 and 0.00 GB.
+- 8 bytes per element (scalar), 1625 elements when full.
+- Memory usage scales as nPoints*nDims.
+Array Data will use between 0.00 and 0.00 GB.
+- 2 bytes per element (data_int), 1625 elements when full.
+- Memory usage scales as nPoints*nDims.
+Array CharFloatMasks will use between 0.00 and 0.00 GB.
+- 1 bytes per element (char), 1625 elements when full.
+- Memory usage scales as nPoints*nDims.
+
+Note that nPoints=65, nDims=25, MaxPossibleClusters=1000
+Total memory usage will be between 0.00 and 0.02 GB.
+RAM limit is set at 15.61 GB.
+----------------------------------------------------------
+Loaded 65 data points of dimension 25.
+MEMO: A lower score indicates a better clustering 
+ Masked EM: Computing Noise Means and Variances 
+ -----------------------------------------
+Starting from 500 clusters...
+------ Clustering full data set of 65 points ------
+Starting initial clusters from distinct float masks 
+ Not enough masks (21) to generate starting clusters (500), so starting with (22) clusters instead.
+Assigned 22 initial classes from 21 unique masks.
+Deleting Class 13 (1 points): Lose 26.225920 but Gain 655.983438
+Iteration 0F (0.011376 sec): 21 clusters
+  Score: Raw -929.144032 + Penalty 6567.133833 = 5637.989801
+  nChanged 15
+Deleting Class 16 (1 points): Lose 7.847986 but Gain 621.953948
+Iteration 1F (0.013485 sec): 19 clusters
+  Score: Raw -979.688900 + Penalty 5976.234458 = 4996.545558
+  nChanged 3
+Deleting Class 20 (1 points): Lose 25.191447 but Gain 580.111854
+Iteration 2Q (0.015351 sec): 18 clusters
+  Score: Raw -975.630517 + Penalty 5371.566084 = 4395.935567
+  nChanged 1
+Deleting Class 8 (2 points): Lose 22.899658 but Gain 569.062584
+Iteration 3Q (0.017132 sec): 17 clusters
+  Score: Raw -954.401886 + Penalty 4855.425920 = 3901.024034
+  nChanged 2
+Deleting Class 15 (2 points): Lose 21.066566 but Gain 557.089314
+Iteration 4Q (0.018796 sec): 16 clusters
+  Score: Raw -947.261162 + Penalty 4414.035706 = 3466.774545
+  nChanged 2
+Deleting Class 21 (1 points): Lose 19.183587 but Gain 541.962577
+Iteration 5Q (0.020457 sec): 15 clusters
+  Score: Raw -943.142199 + Penalty 3905.365317 = 2962.223118
+  nChanged 3
+Deleting Class 9 (1 points): Lose 11.441066 but Gain 524.199620
+Iteration 6Q (0.022017 sec): 14 clusters
+  Score: Raw -942.327619 + Penalty 3398.095271 = 2455.767652
+  nChanged 1
+Deleting Class 12 (3 points): Lose 26.284630 but Gain 484.826145
+Iteration 7Q (0.023521 sec): 13 clusters
+  Score: Raw -919.681567 + Penalty 2950.671376 = 2030.989810
+  nChanged 3
+Deleting Class 19 (2 points): Lose 14.670030 but Gain 429.659715
+Iteration 8Q (0.025138 sec): 12 clusters
+  Score: Raw -926.066857 + Penalty 2588.816190 = 1662.749333
+  nChanged 2
+Deleting Class 7 (1 points): Lose 1.608952 but Gain 412.525372
+Iteration 9Q (0.074222 sec): 11 clusters
+  Score: Raw -932.862846 + Penalty 2183.871417 = 1251.008571
+  nChanged 1
+Deleting Class 14 (1 points): Lose 16.669090 but Gain 360.553528
+Iteration 10Q (0.075651 sec): 10 clusters
+  Score: Raw -919.141598 + Penalty 1837.996998 = 918.855400
+  nChanged 1
+Deleting Class 11 (5 points): Lose 16.022318 but Gain 327.952922
+Iteration 11Q (0.077006 sec): 9 clusters
+  Score: Raw -906.742590 + Penalty 1526.271065 = 619.528475
+  nChanged 5
+Deleting Class 18 (1 points): Lose 13.521631 but Gain 250.843987
+Iteration 12F (0.078481 sec): 8 clusters
+  Score: Raw -926.260223 + Penalty 1221.102722 = 294.842499
+  nChanged 2
+Deleting Class 6 (2 points): Lose 5.364985 but Gain 153.069870
+Iteration 13Q (0.079861 sec): 7 clusters
+  Score: Raw -936.055412 + Penalty 1072.238972 = 136.183560
+  nChanged 2
+Deleting Class 3 (2 points): Lose 13.017565 but Gain 58.441422
+Iteration 14Q (0.081163 sec): 6 clusters
+  Score: Raw -926.026478 + Penalty 1033.059290 = 107.032812
+  nChanged 2
+Deleting Class 5 (3 points): Lose 19.235933 but Gain 38.702685
+Iteration 15Q (0.082424 sec): 5 clusters
+  Score: Raw -914.811748 + Penalty 913.711275 = -1.100473
+  nChanged 3
+Deleting Class 10 (1 points): Lose 8.780301 but Gain 20.871936
+Iteration 16Q (0.083583 sec): 4 clusters
+  Score: Raw -927.669377 + Penalty 959.886578 = 32.217200
+  nChanged 3
+Deleting Class 17 (3 points): Lose 11.224019 but Gain 33.395098
+Iteration 17F (0.084702 sec): 3 clusters
+  Score: Raw -926.922002 + Penalty 919.517464 = -7.404539
+  nChanged 3
+Iteration 18Q (0.085683 sec): 3 clusters
+  Score: Raw -934.232505 + Penalty 919.517464 = -14.715041
+  nChanged 0
+Iteration 19F (0.086660 sec): 3 clusters
+  Score: Raw -934.232505 + Penalty 919.517464 = -14.715041
+  nChanged 0
+Compute initial score before splitting:   Score: Raw -934.232505 + Penalty 919.517464 = -14.715041
+
+ Trying to split cluster 1 (28 points) 
+	SP: Assigned 2 initial classes randomly.
+		SP:Iteration 0F (0.091090 sec): 2 clusters
+  Score: Raw -434.594651 + Penalty 73.049368 = -361.545283
+  nChanged 0
+	SP: Assigned 3 initial classes randomly.
+		SP:Iteration 0F (0.091722 sec): 3 clusters
+  Score: Raw -348.039556 + Penalty 140.546226 = -207.493331
+  nChanged 10
+		SP:Iteration 1F (0.092353 sec): 3 clusters
+  Score: Raw -435.279297 + Penalty 153.731976 = -281.547321
+  nChanged 2
+		SP:Iteration 2F (0.092923 sec): 3 clusters
+  Score: Raw -436.417080 + Penalty 153.731976 = -282.685103
+  nChanged 0
+
+ Trying to split cluster 2 (31 points) 
+	SP: Assigned 2 initial classes randomly.
+		SP:Iteration 0F (0.094898 sec): 2 clusters
+  Score: Raw -615.776365 + Penalty 213.898360 = -401.878006
+  nChanged 0
+	SP: Assigned 3 initial classes randomly.
+		SP:Iteration 0F (0.095581 sec): 3 clusters
+  Score: Raw -562.444592 + Penalty 467.639894 = -94.804698
+  nChanged 6
+		SP:Iteration 1F (0.096259 sec): 3 clusters
+  Score: Raw -572.098992 + Penalty 473.265954 = -98.833038
+  nChanged 6
+		SP:Iteration 2F (0.097111 sec): 3 clusters
+  Score: Raw -613.223722 + Penalty 213.898360 = -399.325362
+  nChanged 1
+		SP:Iteration 3Q (0.097933 sec): 2 clusters
+  Score: Raw -615.776365 + Penalty 213.898360 = -401.878006
+  nChanged 0
+		SP:Iteration 4F (0.098716 sec): 2 clusters
+  Score: Raw -615.776365 + Penalty 213.898360 = -401.878006
+  nChanged 0
+Time taken for this iteration:0.097920 seconds.
+ 500->3 Clusters: Score -14.715041, best is 100000000000000005366162204393472.000000
+THE BEST YET!
+
+Main iterations: 20 (time per iteration =0.736646 ms)
+Total iterations: 30 (time per iteration =0.491097 ms)
+
+Def. Iteration metric 2:
+Iteration_metric2 += (scalar)(nDims*nDims)*(scalar)(nPoints)
+Iterations metric 2: 998750.000000 (time per metric unit =14.751350ns)
+
+Def. Iteration metric 3:
+Iteration_metric3 += (scalar)(nDims*nDims)*(scalar)(nDims*nPoints)
+Iterations metric 3: 24968750.000000 (time per metric unit=590.054008ps)
+
+That took 0.014733 seconds.
