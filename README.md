@@ -42,7 +42,8 @@ With Miniconda or Anaconda install, do:
 Install
 -------
 
-1) Get source from DropBox: copy-paste zip file, unzip  OR from Github
+1) Get source from DropBox: copy-paste zip file, unzip  
+  OR get source from [Github](https://github.com/tymoreau/klusta_process_manager/releases)
 
 2) In a terminal, in the application's folder (where there is a setup.py file):
 > python setup.py install
