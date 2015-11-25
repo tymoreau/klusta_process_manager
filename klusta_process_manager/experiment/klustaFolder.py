@@ -1,7 +1,7 @@
 import time
 #QT
 import PyQt4.QtCore as QtCore
-import config
+import klusta_process_manager.config
 
 #------------------------------------------------------------------------------------------------------------
 #  Folder meant to be process with klusta 
@@ -21,7 +21,7 @@ class KlustaFolder(QtCore.QDir):
 		self.prb=QtCore.QFileInfo()
 		
 		self.icon=icon
-		self.program=config.get_klusta_path()
+		self.program="klusta"
 		
 	def reset_icon(self):
 		if len(self.entryList())==0:

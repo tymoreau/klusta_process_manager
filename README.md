@@ -1,5 +1,5 @@
 
-18 août 2015
+25 novembre 2015
 
 New Features:
 ------------
@@ -47,9 +47,10 @@ Install
 
 2) In a terminal, in the application's folder (where there is a setup.py file):
 > python setup.py install
+> sudo python create_shortcut.py
 
 3) The install should have created a folder "processManager" in your home.
-Inside, you'll find a file **userConfig.py** where you can **change default
+Inside, you'll find a file **userConfig.json** where you can **change default
 parameters**.
 
 In this folder, the application is also going to save data in small .db or
@@ -65,6 +66,11 @@ To launch
 
 In a terminal, anywhere:
 > klusta_process_manager
+
+New: shortcut in the menu 
+All Applications>applications>klusta_process_manager
+
+NB: you can put a shortcut on the desktop, but not on the task bar ("show a launcher when not running" doesn't work)
 
 
 RSync

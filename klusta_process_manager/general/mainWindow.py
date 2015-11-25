@@ -14,9 +14,9 @@ from klusta_process_manager.fileBrowser import FileBrowser
 from klusta_process_manager.experiment import Experiment
 
 #Import parameter
-from config import WIDTH, HEIGHT, MIN_WIDTH, MIN_HEIGHT, TITLE, get_user_folder_path
+from klusta_process_manager.config import WIDTH, HEIGHT, MIN_WIDTH, MIN_HEIGHT, TITLE, get_user_folder_path
 
-#------------------------------------------------------------------------------------------------------------
+#----------------------------------------------------------------------------------------------------------
 # Receive message an print them 
 # Keep only 3 lines
 class LogView(QtGui.QWidget):
@@ -42,6 +42,9 @@ class MainWindow(QtGui.QWidget):
 		super(MainWindow,self).__init__()
 		self.rootPath=ROOT
 		self.backUPPath=BACK_UP
+
+		#error handler
+		self.err_box=None
 		
 		#database
 		self.database=database
@@ -90,7 +93,21 @@ class MainWindow(QtGui.QWidget):
 		self.setLayout(vbox)
 		self.setMinimumSize(WIDTH,HEIGHT)
 		self.setWindowTitle(TITLE)
-		
+
+	def std_err_post(self, msg):
+		'''
+		This method receives stderr text strings as a pyqtSlot. 
+		http://stackoverflow.com/a/28505463/4720935
+		'''
+		if self.err_box is None:
+			self.err_box = QtGui.QMessageBox()
+			self.err_box.finished.connect(self.clear)
+		self.err_box.setText(self.err_box.text() + msg)
+		self.err_box.show()
+
+	def clear(self):
+		self.err_box.setText('')
+
 	#TODO
 	def on_directory_change(self,path):
 		if path==self.rootPath:
@@ -116,9 +133,14 @@ class MainWindow(QtGui.QWidget):
 		for expInfoDict in experimentInfoList:
 			folderName=expInfoDict["folderName"]
 			if folderName not in self.experimentDict:
-				self.experimentDict[folderName]=Experiment(expInfoDict,parent=self)
-			expList.append(self.experimentDict[folderName])
-			self.watchList.append(self.experimentDict[folderName].pathLocal)
+				exp=Experiment(expInfoDict,parent=self)
+				if exp.isValid:
+					self.experimentDict[folderName]=exp
+			try:
+				expList.append(self.experimentDict[folderName])
+				self.watchList.append(self.experimentDict[folderName].pathLocal)
+			except KeyError:
+				pass
 		self.watcher.addPaths(self.watchList)
 		self.fileBrowser.reset_experimentList(expList)
 

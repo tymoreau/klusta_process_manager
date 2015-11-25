@@ -9,7 +9,7 @@ sip.setapi('QString',2)
 import PyQt4.QtCore as QtCore
 
 from .klustaFolder import KlustaFolder
-from config import RSYNC_ARG_TO_BACKUP, RSYNC_ARG_FROM_BACKUP
+from klusta_process_manager.config import RSYNC_ARG_TO_BACKUP, RSYNC_ARG_FROM_BACKUP
 
 #----------------------------------------------------------------------------------------------
 # Experiment (=one folder)
@@ -20,6 +20,7 @@ class Experiment(QtCore.QObject):
 	def __init__(self,expInfoDict, parent=None):
 		super(Experiment,self).__init__(parent)
 		self.state="--"
+		self.isValid=True
 		
 		#Database related
 		self.hasChange=False  # True = have to be update in database
@@ -38,20 +39,24 @@ class Experiment(QtCore.QObject):
 			self.yearMonth="--"
 			self.day="--"
 			self.time="--"
-		self.dateTime=QtCore.QDateTime().fromString(self.yearMonth+self.day+self.time," MMM \n yyyy  ddd dd  hh:mm ")
+
+		#retrieve date for sorting purpose
+		dateString=self.yearMonth+self.day+self.time
+		self.dateTime=QtCore.QDateTime().fromString(dateString," MMM \n yyyy  ddd dd  hh:mm ")
 			
 		#Local folder
-		self.folder=KlustaFolder(self.pathLocal,icon)
-		if not self.folder.exists():
-			self.state="could not find folder %s"%self.pathLocal
+		if not QtCore.QDir(self.pathLocal).exists():
+			self.state="Could not find folder %s"%self.pathLocal
 			self.isValid=False
 			return
-		
-		#BackUP folder
-		self.backUPFolder=KlustaFolder(self.pathBackUP)
-		if not self.backUPFolder.exists():
-			self.state="Could not find folder %s in BACK_UP"%self.folderName
+		self.folder=KlustaFolder(self.pathLocal,icon)
+
+		if QtCore.QDir(self.pathBackUP).exists():
+			self.backUPFolder=KlustaFolder(self.pathBackUP)
+		else:
+			self.state="Could not find folder %s in back up" %(self.pathBackUP)
 			self.pathBackUP=None
+			return
 
 	#comparison between object (lt=less than)
 	def __lt__(self,other):

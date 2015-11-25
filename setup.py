@@ -1,6 +1,6 @@
 import os
 from setuptools import setup, find_packages
-from config import create_user_config_file
+from klusta_process_manager.config import create_user_config_file
 
 def read(fname):
 	return open(os.path.join(os.path.dirname(__file__), fname)).read()
