@@ -8,7 +8,7 @@ sip.setapi('QString',2)
 from PyQt4 import QtCore,QtGui,QtSql
 
 from klusta_process_manager.server import ServerTCP 
-from config import *
+from klusta_process_manager.config import *
 
 def main():
 	QtGui.QApplication.setStyle("cleanlooks")

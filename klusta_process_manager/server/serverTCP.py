@@ -13,7 +13,7 @@ from klusta_process_manager.general import ConsoleView
 
 from .experimentModelServer import ExperimentModelServer
 from .clientSocket import Client
-from config import *
+from klusta_process_manager.config import *
 
 class ServerTCP(QtGui.QWidget):
 	def __init__(self,parent=None):

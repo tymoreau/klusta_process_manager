@@ -4,7 +4,7 @@ sip.setapi('QVariant',2)
 sip.setapi('QString',2)
 from PyQt4 import QtCore,QtGui
 
-from config import SERVER_PATH, RSYNC_ARG_FROM_BACKUP_TO_SERVER
+from klusta_process_manager.config import SERVER_PATH, RSYNC_ARG_FROM_BACKUP_TO_SERVER
 
 class ExperimentModelServer(QtCore.QAbstractTableModel):
 	expStateChanged=QtCore.pyqtSignal(str) #clientIP

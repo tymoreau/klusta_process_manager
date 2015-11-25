@@ -4,7 +4,7 @@ sip.setapi('QVariant',2)
 sip.setapi('QString',2)
 from PyQt4 import QtCore,QtGui,QtNetwork
 
-from config import *
+from klusta_process_manager.config import *
 
 #--------------------------------------------------------------------------------------------------------
 #  CLIENT: tcpSocket to communicate with the tcpSocket of ProcessManager.py
