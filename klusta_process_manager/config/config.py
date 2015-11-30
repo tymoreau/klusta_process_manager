@@ -29,9 +29,6 @@ def create_user_config_file(override=False):
 				 "default_port_for_server":"1234",
 				 "rsync_arg_local_to_backup":["-rlzutO"],
 				 "rsync_arg_backup_to_local":["-rlzutO","--exclude=*.dat"],
-				 "rsync_arg_backup_to_server":["-rlzutO","--prune-empty-dirs",
-											   "--include","*/","--include=*.prm",
-											   "--include=*.prb","--include=*.dat","--exclude=*"],
 				 "window_pixel_width":1000,
 				 "window_pixel_height":1000,
 				 }
@@ -93,8 +90,10 @@ DEFAULT_ICON="folder-grey.png"
 #------------------------------------------------------------------------------------------
 # Server
 #------------------------------------------------------------------------------------------
-SERVER_PATH="../test/dataServer"
-BACK_UP_PATH='../test/fakeNAS'
+RSYNC_ARG_FROM_BACKUP_TO_SERVER=["-rlzutO","--prune-empty-dirs","--include","*/","--include=*.prm","--include=*.prb","--include=*.dat","--exclude=*"]
+
+SERVER_PATH="/home/david/Code/application/test/dataServer"
+BACK_UP_PATH='/home/david/Code/application/test/fakeNAS'
 PORT=1234
 
 

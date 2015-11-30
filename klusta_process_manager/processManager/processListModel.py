@@ -370,11 +370,11 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 		if self.expSyncing is None:
 			if len(self.toBackUP)>0:
 				self.expSyncing=self.toBackUP.pop(0)
-				self.expSyncing.sync_to_backUP("rsync",self.argToBackUP)
+				self.expSyncing.sync_to_backUP(process,self.argToBackUP)
 				return True
 			elif len(self.toSyncFromBackUP)>0:
 				self.expSyncing=self.toSyncFromBackUP.pop(0)
-				self.expSyncing.sync_from_backUP("rsync",self.argToLocal)
+				self.expSyncing.sync_from_backUP(process,self.argToLocal)
 				return True
 			else:
 				return False

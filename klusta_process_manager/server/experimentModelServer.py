@@ -91,7 +91,7 @@ class ExperimentModelServer(QtCore.QAbstractTableModel):
 		if self.expSyncing is None:
 			if len(self.toBackUP)>0:
 				self.expSyncing=self.toBackUP.pop(0)
-				self.expSyncing.sync_to_backUP(process)
+				self.expSyncing.sync_to_backUP(process,["-rlztuO"])
 				self.expStateChanged.emit(self.nameToClient[self.expSyncing.folderName])
 				return True
 			elif len(self.toSyncFromBackUP)>0:

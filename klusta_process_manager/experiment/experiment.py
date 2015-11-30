@@ -135,10 +135,10 @@ class Experiment(QtCore.QObject):
 	
 	#------------------------------------------------------------------------------------------------------
 	# Sync (one at a time)
-	def sync_to_backUP(self,proc="rsync",arg=""):
+	def sync_to_backUP(self,process,arg):
 		if self.folder.exists():
 			if self.backUPFolder.exists():
-				process.start(proc,arg+[self.pathLocal+"/",self.pathBackUP])
+				process.start("rsync",arg+[self.pathLocal+"/",self.pathBackUP])
 				self.state="Sync Local->BackUP"
 				return True
 			self.state="No folder in backUP"
@@ -146,10 +146,10 @@ class Experiment(QtCore.QObject):
 			self.state="No folder in local"
 		return False
 		
-	def sync_from_backUP(self,proc="rsync",arg=""):
+	def sync_from_backUP(self,process,arg):
 		if self.folder.exists():
 			if self.backUPFolder.exists():
-				process.start(proc,arg+[self.pathBackUP+"/",self.pathLocal])
+				process.start("rsync",arg+[self.pathBackUP+"/",self.pathLocal])
 				self.state="Sync BackUP->Local"
 				return True
 			self.state="No folder in backUP"
