@@ -16,7 +16,9 @@ def create_user_config_file(override=False):
 	configPath=os.path.join(dirPath,"userConfig.json")
 	if not override:
 		if os.path.exists(configPath):
-			return
+			answer=input("Configuration file %s already exist, override ([Y]/N) ?"%configPath)
+			if str(answer).lower() in ["n","no"]:
+				return
 
 	print("Creating configuration file ",configPath)
 	parameters= {"path_to_data":"/data",
@@ -24,7 +26,15 @@ def create_user_config_file(override=False):
 				 "length_ID":3,
 				 "dateTime_formats":["_yyyy_MM_dd_HH_mm"],
 				 "default_ip_for_server":"10.51.25.1",
-				 "default_port_for_server":"1234"}
+				 "default_port_for_server":"1234",
+				 "rsync_arg_local_to_backup":["-rlzutO"],
+				 "rsync_arg_backup_to_local":["-rlzutO","--exclude=*.dat"],
+				 "rsync_arg_backup_to_server":["-rlzutO","--prune-empty-dirs",
+											   "--include","*/","--include=*.prm",
+											   "--include=*.prb","--include=*.dat","--exclude=*"],
+				 "window_pixel_width":1000,
+				 "window_pixel_height":1000,
+				 }
 	
 	with open(configPath, "w") as f:
 		json.dump(parameters,f,sort_keys=True,indent=4)
@@ -73,34 +83,12 @@ def get_klusta_path():
 #------------------------------------------------------------------------------------------
 #    Main Window   
 #------------------------------------------------------------------------------------------
-WIDTH=1000
-HEIGHT=1000
-MIN_WIDTH=int(WIDTH*0.75)
-MIN_HEIGHT=int(HEIGHT*0.75)
 TITLE="Klusta Process Manager"
 
 #------------------------------------------------------------------------------------------
 #    Database
 #------------------------------------------------------------------------------------------
 DEFAULT_ICON="folder-grey.png"
-
-#------------------------------------------------------------------------------------------
-#    Transfer:  > rsync RSYNC_ARG /source/ /destination     
-#------------------------------------------------------------------------------------------
-#Rsync arguments
-# -r: recursive
-# -l: keep symlink
-# -z: compress (faster if slow network)
-# -u: update (keep the last modified file)
-# -t: update the timestamps (important for -u to work correctly)
-# -O: don't update the timestamps on directories (rsync fail (error 23) on some filesystem)
-
-#Do not put extra quotes (Wrong: --include='*.prm' | Right: --include=*.prm)
-
-RSYNC_ARG_TO_BACKUP=["-rlzutO"]
-RSYNC_ARG_FROM_BACKUP=["-rlzutO","--exclude=*.dat"]
-
-RSYNC_ARG_FROM_BACKUP_TO_SERVER=["-rlzutO","--prune-empty-dirs","--include","*/","--include=*.prm","--include=*.prb","--include=*.dat","--exclude=*"]
 
 #------------------------------------------------------------------------------------------
 # Server
