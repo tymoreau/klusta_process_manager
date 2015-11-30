@@ -2,7 +2,9 @@
 import sip
 sip.setapi('QVariant',2)
 sip.setapi('QString',2)
+
 from PyQt4 import QtCore,QtGui
+from klusta_process_manager.config import get_klusta_path
 
 class FolderView(QtGui.QWidget):
 
@@ -100,7 +102,10 @@ class FolderView(QtGui.QWidget):
 			QtGui.QDesktopServices.openUrl(QtCore.QUrl(path))
 
 	def open_klustaviewa(self,path):
-		if self.processViewa.state()==QtCore.QProcess.Running:
-			QtGui.QMessageBox.warning(self,"error","Klustaviewa is already open",QtGui.QMessageBox.Ok)
-		else:
-			self.processViewa.startDetached("/home/david/anaconda/envs/klusta/bin/klustaviewa",[path])
+		pathKlustaviewa=get_klusta_path()+"viewa"
+		isOpen=self.processViewa.startDetached(pathKlustaviewa,[path])
+		if not isOpen:
+			QtGui.QMessageBox.warning(self,"error",
+									  "Could not open Klustaviewa (path=%s)"%pathKlustaviewa,
+									  QtGui.QMessageBox.Ok)
+
