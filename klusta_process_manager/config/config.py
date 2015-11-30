@@ -23,7 +23,7 @@ def create_user_config_file(override=False):
 				 "path_to_back_up":"/NAS02",
 				 "length_ID":3,
 				 "dateTime_formats":["_yyyy_MM_dd_HH_mm"],
-				 "default_ip_for_server":"10.52.25.1",
+				 "default_ip_for_server":"10.51.25.1",
 				 "default_port_for_server":"1234"}
 	
 	with open(configPath, "w") as f:

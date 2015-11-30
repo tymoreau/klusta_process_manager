@@ -54,6 +54,7 @@ class Experiment(QtCore.QObject):
 		if QtCore.QDir(self.pathBackUP).exists():
 			self.backUPFolder=KlustaFolder(self.pathBackUP)
 		else:
+			self.backUPFolder=None
 			self.state="Could not find folder %s in back up" %(self.pathBackUP)
 			self.pathBackUP=None
 			return
@@ -70,8 +71,8 @@ class Experiment(QtCore.QObject):
 			self.hasChange=True
 
 	def refresh_state(self):
-		if not self.backUPFolder.exists():
-			self.state="Could not find folder %s in BACK_UP"%self.folderName
+		if (self.backUPFolder is None) or (not self.backUPFolder.exists()):
+			self.state="Could not find folder %s in backUP"%(self.folderName)
 		elif not self.folder.exists():
 			self.state="Could not find folder at %s"%self.pathLocal
 		elif self.folder.has_kwik():
