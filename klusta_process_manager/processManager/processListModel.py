@@ -8,7 +8,7 @@ sip.setapi('QVariant',2)
 sip.setapi('QString',2)
 from PyQt4 import QtCore,QtGui
 
-from klusta_process_manager.config import get_user_folder_path
+from klusta_process_manager.config import get_user_folder_path,read_user_config_file
 
 #-------------------------------------------------------------------------------------------------------------
 # Custom Header
@@ -91,6 +91,10 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 		
 		self.expProcessing=None
 		self.expSyncing=None
+
+		param=read_user_config_file()
+		self.argToBackUP=param["rsync_arg_local_to_backup"]
+		self.argToLocal=param["rsync_arg_backup_to_local"]
 		
 	def rowCount(self,QModelIndex):
 		return len(self.experimentList)
@@ -366,11 +370,11 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 		if self.expSyncing is None:
 			if len(self.toBackUP)>0:
 				self.expSyncing=self.toBackUP.pop(0)
-				self.expSyncing.sync_to_backUP(process)
+				self.expSyncing.sync_to_backUP("rsync",self.argToBackUP)
 				return True
 			elif len(self.toSyncFromBackUP)>0:
 				self.expSyncing=self.toSyncFromBackUP.pop(0)
-				self.expSyncing.sync_from_backUP(process)
+				self.expSyncing.sync_from_backUP("rsync",self.argToLocal)
 				return True
 			else:
 				return False

@@ -9,7 +9,6 @@ sip.setapi('QString',2)
 import PyQt4.QtCore as QtCore
 
 from .klustaFolder import KlustaFolder
-from klusta_process_manager.config import RSYNC_ARG_TO_BACKUP, RSYNC_ARG_FROM_BACKUP
 
 #----------------------------------------------------------------------------------------------
 # Experiment (=one folder)
@@ -136,10 +135,10 @@ class Experiment(QtCore.QObject):
 	
 	#------------------------------------------------------------------------------------------------------
 	# Sync (one at a time)
-	def sync_to_backUP(self,process):
+	def sync_to_backUP(self,proc="rsync",arg=""):
 		if self.folder.exists():
 			if self.backUPFolder.exists():
-				process.start("rsync",RSYNC_ARG_TO_BACKUP+[self.pathLocal+"/",self.pathBackUP])
+				process.start(proc,arg+[self.pathLocal+"/",self.pathBackUP])
 				self.state="Sync Local->BackUP"
 				return True
 			self.state="No folder in backUP"
@@ -147,11 +146,10 @@ class Experiment(QtCore.QObject):
 			self.state="No folder in local"
 		return False
 		
-	def sync_from_backUP(self,process,arg=RSYNC_ARG_FROM_BACKUP):
+	def sync_from_backUP(self,proc="rsync",arg=""):
 		if self.folder.exists():
 			if self.backUPFolder.exists():
-				process.start("rsync",arg+[self.pathBackUP+"/",self.pathLocal])
-				print("rsync",arg+[self.pathBackUP+"/",self.pathLocal])
+				process.start(proc,arg+[self.pathBackUP+"/",self.pathLocal])
 				self.state="Sync BackUP->Local"
 				return True
 			self.state="No folder in backUP"

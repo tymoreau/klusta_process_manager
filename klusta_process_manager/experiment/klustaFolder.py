@@ -1,7 +1,7 @@
-import time
 #QT
 import PyQt4.QtCore as QtCore
-import klusta_process_manager.config as config
+
+from klusta_process_manager.config import get_klusta_path
 
 #------------------------------------------------------------------------------------------------------------
 #  Folder meant to be process with klusta 
@@ -21,7 +21,7 @@ class KlustaFolder(QtCore.QDir):
 		self.prb=QtCore.QFileInfo()
 		
 		self.icon=icon
-		self.program=config.get_klusta_path()
+		self.program=get_klusta_path()
 		
 	def reset_icon(self):
 		if len(self.entryList())==0:
@@ -94,7 +94,7 @@ class KlustaFolder(QtCore.QDir):
 				else:
 					return False
 				return True
-			except:
+			except IOError:
 				print("Error in extract_info_frm_prm:",str(IOError))
 				return False
 			

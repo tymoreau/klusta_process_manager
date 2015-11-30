@@ -14,7 +14,7 @@ from klusta_process_manager.fileBrowser import FileBrowser
 from klusta_process_manager.experiment import Experiment
 
 #Import parameter
-from klusta_process_manager.config import WIDTH, HEIGHT, MIN_WIDTH, MIN_HEIGHT, TITLE, get_user_folder_path
+from klusta_process_manager.config import TITLE, get_user_folder_path, read_user_config_file
 
 #----------------------------------------------------------------------------------------------------------
 # Receive message an print them 
@@ -42,6 +42,16 @@ class MainWindow(QtGui.QWidget):
 		super(MainWindow,self).__init__()
 		self.rootPath=ROOT
 		self.backUPPath=BACK_UP
+
+		WIDTH=800
+		HEIGHT=600
+		param=read_user_config_file()
+		if param is not None:
+			try:
+				HEIGHT=param["window_pixel_height"]
+				WIDTH=param["window_pixel_width"]
+			except KeyError:
+				pass
 
 		#error handler
 		self.err_box=None
@@ -84,8 +94,8 @@ class MainWindow(QtGui.QWidget):
 		splitterVertical.setChildrenCollapsible(False)
 		splitterVertical.setStretchFactor(0,2)
 		
-		self.fileBrowser.setMinimumSize(MIN_WIDTH-20,int(MIN_HEIGHT/2)-20)
-		self.processManager.setMinimumSize(MIN_WIDTH-20,int(MIN_HEIGHT/2)-20)
+		self.fileBrowser.setMinimumSize(WIDTH-20,int(HEIGHT/2)-20)
+		self.processManager.setMinimumSize(WIDTH-20,int(HEIGHT/2)-20)
 		
 		vbox=QtGui.QVBoxLayout()
 		vbox.addWidget(splitterVertical)
