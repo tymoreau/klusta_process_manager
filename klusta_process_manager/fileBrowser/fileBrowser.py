@@ -190,7 +190,10 @@ class FileBrowser(QtGui.QWidget):
 		self.button_loadModels.clicked.connect(self.loadModels)
 		
 		#label
-		self.label_path=QtGui.QLabel(ROOT+os.sep)
+		labelPath=ROOT+os.sep
+		if len(labelPath)>20:
+			labelPath="..."+labelPath[-17:]
+		self.label_path=QtGui.QLabel(labelPath)
 		self.label_load=QtGui.QLabel('          ')
 		self.label_prmModel=QtGui.QLabel('no prm model')
 		self.label_prbModel=QtGui.QLabel('no prb model')
@@ -199,27 +202,29 @@ class FileBrowser(QtGui.QWidget):
 		self.prbModel=QtCore.QFileInfo()
 		
 		#Layout
-		hboxT=QtGui.QHBoxLayout()
-		hboxT.addWidget(self.label_path)
-		hboxT.addWidget(self.animalComboBox)
-		hboxT.addStretch()
+		hbox1=QtGui.QHBoxLayout()
+		hbox1.addWidget(self.label_path)
+		hbox1.addWidget(self.animalComboBox)
+		hbox1.addStretch()
 
-		vboxP=QtGui.QVBoxLayout()
-		vboxP.addWidget(self.label_prmModel)
-		vboxP.addWidget(self.label_prbModel)
+		hbox2=QtGui.QHBoxLayout()
+		hbox2.addWidget(self.view.label_hide)
+		hbox2.addWidget(self.view.edit_hide)
 
-		hboxB=QtGui.QHBoxLayout()
-		hboxB.addWidget(self.button_add)
-		hboxB.addWidget(self.button_loadModels)
-		hboxB.addLayout(vboxP)
-		hboxB.addWidget(self.button_createFiles)
-		hboxB.addWidget(self.label_load)
+		grid=QtGui.QHBoxLayout()
+		grid.addWidget(self.button_add)
+		grid.addWidget(self.button_loadModels)
+		grid.addWidget(self.label_prmModel)
+		grid.addWidget(self.label_prbModel)
+		grid.addWidget(self.button_createFiles)
+		grid.addWidget(self.label_load)
 		
-		vbox=QtGui.QVBoxLayout()
-		vbox.addLayout(hboxT)
-		vbox.addWidget(self.view)
-		vbox.addLayout(hboxB)
-		self.setLayout(vbox)
+		layout=QtGui.QGridLayout()
+		layout.addLayout(hbox1,1,1)
+		layout.addLayout(hbox2,1,2)
+		layout.addWidget(self.view,2,1,4,2)
+		layout.addLayout(grid,6,1,1,2)
+		self.setLayout(layout)
 		
 	def set_animalComboBox(self,animalList):
 		for animalID in animalList:

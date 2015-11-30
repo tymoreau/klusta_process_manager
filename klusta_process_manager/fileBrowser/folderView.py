@@ -30,6 +30,7 @@ class FolderView(QtGui.QWidget):
 	
 		#FileSytemModel linked to listFile
 		self.folderModel=QtGui.QFileSystemModel(self)
+		self.folderModel.setNameFilterDisables(False)
 
 		#open klustaviewa
 		self.processViewa=QtCore.QProcess()
@@ -43,6 +44,12 @@ class FolderView(QtGui.QWidget):
 			env.append(newitem)
 		env.append("CONDA_DEFAULT_ENV=klusta")
 		self.processViewa.setEnvironment(env)
+
+		#hide label/Edit
+		self.label_hide=QtGui.QLabel('Show only:')
+		self.edit_hide=QtGui.QLineEdit()
+		self.edit_hide.setPlaceholderText("type 'kwik, 'pos',... and press enter")
+		self.edit_hide.returnPressed.connect(self.on_enter_press)
 		
 		#Layout
 		self.space=QtGui.QWidget()
@@ -52,17 +59,29 @@ class FolderView(QtGui.QWidget):
 		hbox.addWidget(self.space)
 		hbox.addWidget(self.listFile)
 		self.setLayout(hbox)
+
+		#display empty space (no folder selected)
 		self.listFile.hide()
+		self.label_hide.hide()
+		self.edit_hide.hide()
 		self.space.show()
 		
 	def refresh(self):
 		self.listFile.update()
+
+	def on_enter_press(self):
+		text=self.edit_hide.text()
+		filters=["*"+extension.strip() for extension in text.split(",")]
+		self.edit_hide.clearFocus()
+		self.folderModel.setNameFilters(filters)
 		
 	#User clicked on one folder
 	def on_selection_changed(self,selected,deselected):
 		if len(selected.indexes())==0:
 			if len(self.table.selectedIndexes())==0:
 				self.listFile.hide()
+				self.label_hide.hide()
+				self.edit_hide.hide()
 				self.space.show()
 				return
 			else:
@@ -70,6 +89,8 @@ class FolderView(QtGui.QWidget):
 		else:
 			lastIndex=selected.indexes()[-1]
 		self.listFile.show()
+		self.edit_hide.show()
+		self.label_hide.show()
 		self.space.hide()
 		#Set ListFile to display folder's content
 		path=lastIndex.model().pathLocal_from_index(lastIndex)
@@ -84,6 +105,8 @@ class FolderView(QtGui.QWidget):
 		self.table.clearSelection()
 		self.folderModel.reset()
 		self.listFile.hide()
+		self.label_hide.hide()
+		self.edit_hide.hide()
 		self.listFile.clearSelection()
 		self.space.show()
 		self.table.resizeColumnsToContents()

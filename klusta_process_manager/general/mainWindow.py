@@ -82,6 +82,7 @@ class MainWindow(QtGui.QWidget):
 		splitterVertical.addWidget(self.fileBrowser)
 		splitterVertical.addWidget(self.processManager)
 		splitterVertical.setChildrenCollapsible(False)
+		splitterVertical.setStretchFactor(0,2)
 		
 		self.fileBrowser.setMinimumSize(MIN_WIDTH-20,int(MIN_HEIGHT/2)-20)
 		self.processManager.setMinimumSize(MIN_WIDTH-20,int(MIN_HEIGHT/2)-20)
