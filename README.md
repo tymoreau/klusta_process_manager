@@ -1,10 +1,8 @@
-
-25 novembre 2015
+User interface around [Klusta suite](http://klusta-team.github.io/), an open-source software for neuroscience.
 
 ![screenshot](other/screenshot5.jpg)
 
-
-New Features:
+New Features (25/11/2015):
 ------------
 
 - Open files with double click (in the top right view)
@@ -45,12 +43,12 @@ With Miniconda or Anaconda install, do:
 Install
 -------
 
-1) Get source from DropBox: copy-paste zip file, unzip  
-  OR get source from [Github](https://github.com/tymoreau/klusta_process_manager/releases)
+1) Download source folder
 
 2) In a terminal, in the application's folder (where there is a setup.py file):
-> python setup.py install
-> sudo python create_shortcut.py
+
+    > python setup.py install
+    > sudo python create_shortcut.py
 
 3) The install should have created a folder "processManager" in your home.
 Inside, you'll find a file **userConfig.json** where you can **change default
@@ -68,9 +66,10 @@ To launch
 -----
 
 In a terminal, anywhere:
-> klusta_process_manager
 
-New: shortcut in the menu   
+    > klusta_process_manager
+
+New: shortcut in the menu     
 All Applications>applications>klusta_process_manager  
 
 NB: you can put a shortcut on the desktop, but not on the task bar ("show a launcher when not running" doesn't work)
@@ -102,4 +101,5 @@ PORT=1234
 IP=10.51.101.61  
 
 To launch the server
->klusta_server
+
+    >klusta_server
