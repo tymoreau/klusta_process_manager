@@ -36,8 +36,9 @@ Python 3.4 and PyQt4 (already in Anaconda)
 Should also work with Python2.7
 
 With Miniconda or Anaconda install, do:
-> conda update conda
-> conda update pyqt
+
+    > conda update conda
+    > conda update pyqt
 
 
 Install
