@@ -1,6 +1,9 @@
 
 25 novembre 2015
 
+![screenshot](other/screenshot5.jpg)
+
+
 New Features:
 ------------
 
