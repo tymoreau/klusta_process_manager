@@ -1,7 +1,3 @@
-import sys
-import signal
-import time
- 
 #QT
 import sip
 sip.setapi('QVariant',2)

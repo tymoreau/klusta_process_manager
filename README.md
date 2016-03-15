@@ -32,7 +32,7 @@ application. Open it later and reconnect to the server to see the progress.
 Requirements
 ------------
 
-Python 3.4 and PyQt4 (already in Anaconda)  
+Python 3.4 and PyQt4 (already in Anaconda)
 Should also work with Python2.7
 
 With Miniconda or Anaconda install, do:
@@ -62,7 +62,6 @@ For now, a database (.db) is created for a given path_to_data and
 path_to_back_up. An experimentListServer.save is created if you close the app
 while processing experiments and the server.
 
-
 To launch
 -----
 
@@ -74,6 +73,9 @@ New: shortcut in the menu
 All Applications>applications>klusta_process_manager  
 
 NB: you can put a shortcut on the desktop, but not on the task bar ("show a launcher when not running" doesn't work)
+
+
+If you have issues with 'Can not open ...x.db', check if you have the file 'libqsqlite.so' in anaconda/plugins/sqldrivers (or in miniconda/...). This file can be found in the 'other' folder of this app.
 
 
 RSync

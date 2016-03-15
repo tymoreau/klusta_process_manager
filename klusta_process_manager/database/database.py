@@ -1,6 +1,6 @@
 #import QT
 import sip
-import glob
+
 sip.setapi('QVariant',2)
 sip.setapi('QString',2)
 from PyQt4 import QtCore,QtSql

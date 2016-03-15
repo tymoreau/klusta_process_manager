@@ -69,12 +69,16 @@ def get_klusta_path():
 	anaconda=os.path.join(homePath,"anaconda/envs/klusta/bin/klusta")
 	if os.path.exists(anaconda):
 		return anaconda
-	else:
-		miniconda=os.path.join(homePath,"miniconda/envs/klusta/bin/klusta")
-		if os.path.exists(miniconda):
-			return miniconda
-		else:
-			return "klusta"
+	miniconda=os.path.join(homePath,"miniconda/envs/klusta/bin/klusta")
+	if os.path.exists(miniconda):
+		return miniconda
+	anaconda3=os.path.join(homePath,"anaconda3/envs/klusta/bin/klusta")
+	if os.path.exists(anaconda3):
+		return anaconda3
+	miniconda3=os.path.join(homePath,"miniconda3/envs/klusta/bin/klusta")
+	if os.path.exists(miniconda3):
+		return miniconda3
+	return "klusta"
 
 
 #------------------------------------------------------------------------------------------
