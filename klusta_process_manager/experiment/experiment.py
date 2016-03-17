@@ -50,8 +50,7 @@ class Experiment(QtCore.QObject):
 			self.backUPFolder=KlustaFolder(self.pathBackUP)
 		else:
 			self.backUPFolder=None
-			self.state="Could not find folder %s in back up" %(self.pathBackUP)
-			self.pathBackUP=None
+			self.state="Could not find folder %s in back up" %(self.folderName)
 			return
 
 	#comparison between object (lt=less than)
@@ -66,6 +65,8 @@ class Experiment(QtCore.QObject):
 			self.hasChange=True
 
 	def refresh_state(self):
+		if (self.backUPFolder is None) and (QtCore.QDir(self.pathBackUP).exists()):
+			self.backUPFolder=KlustaFolder(self.pathBackUP)
 		if (self.backUPFolder is None) or (not self.backUPFolder.exists()):
 			self.state="Could not find folder %s in backUP"%(self.folderName)
 		elif not self.folder.exists():
@@ -97,7 +98,7 @@ class Experiment(QtCore.QObject):
 	#------------------------------------------------------------------------------------------------------
 	#Processs local
 	def can_be_process(self):
-		if not self.backUPFolder.exists():
+		if (self.backUPFolder is None) or (not self.backUPFolder.exists()):
 			self.state="Could not find folder %s in BACK_UP"%self.folderName
 			return False
 		elif not self.folder.can_be_process():
