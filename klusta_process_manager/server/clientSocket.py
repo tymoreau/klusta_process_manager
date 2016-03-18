@@ -2,7 +2,7 @@
 import sip
 sip.setapi('QVariant',2)
 sip.setapi('QString',2)
-from PyQt4 import QtCore,QtGui,QtNetwork
+from PyQt4 import QtCore
 
 from klusta_process_manager.config import *
 

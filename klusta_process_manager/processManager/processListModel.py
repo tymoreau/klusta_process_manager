@@ -1,5 +1,3 @@
-import sys
-import signal
 import os
 
 #QT
@@ -462,6 +460,7 @@ class ProcessListModel(QtCore.QAbstractTableModel):
 			folderName=stateList[i]
 			state=stateList[i+1]
 			state=state.replace("local","server")
+			state=state.replace("Local","Server")
 			try:
 				self.onServer[folderName].state=state
 			except KeyError:

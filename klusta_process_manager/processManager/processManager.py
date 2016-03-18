@@ -1,6 +1,3 @@
-import sys
-import signal
-
 #QT
 import sip
 sip.setapi('QVariant',2)
