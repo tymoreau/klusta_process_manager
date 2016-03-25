@@ -1,3 +1,5 @@
+### Klusta process manager
+
 User interface around [Klusta suite](http://klusta-team.github.io/), an open-source software for neuroscience.
 
 The application allows to:
