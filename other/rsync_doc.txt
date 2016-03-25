@@ -1,0 +1,30 @@
+#------------------------------------------------------------------------------------------
+#   Files are transfered with:  > rsync RSYNC_ARG /source/ /destination
+#------------------------------------------------------------------------------------------
+
+Rsync arguments
+ -r: recursive
+ -l: keep symlink
+ -z: compress (faster if slow network)
+ -u: update (keep the last modified file)
+ -t: update the timestamps (important for -u to work correctly)
+ -O: don't update the timestamps on directories (otherwise rsync fail (error
+ 23) on some filesystem)
+
+Do not put extra quotes (Wrong: --include='*.prm' | Right: --include=*.prm)
+
+# Update everything from local sytem to the back up (/data/ to /NAS02)
+
+RSYNC_ARG_TO_BACKUP=["-rlzutO"]
+
+
+# Update from back up to local system
+# Do not update dat file: it hasn't change and it's too heavy
+
+RSYNC_ARG_FROM_BACKUP=["-rlzutO","--exclude=*.dat"]
+
+
+# Copy files from the back up to the server
+# copy only prm, prb and dat to run klusta
+
+RSYNC_ARG_FROM_BACKUP_TO_SERVER=["-rlzutO","--prune-empty-dirs","--include","*/","--include=*.prm","--include=*.prb","--include=*.dat","--exclude=*"]
