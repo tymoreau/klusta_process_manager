@@ -1,0 +1,21 @@
+To run another program instead of klusta, for example phy
+
+1) In config / config.py:
+     The method "get_klusta_path" should return the path to the program
+     The current method look for the full path to klusta, because of virtual environment issue
+     For phy, it should be enough to change the method to
+         def get_klusta_path():
+             return "phy"
+     
+             
+2) In experiment / klustaFolder.py:
+     The method "run_process" runs klusta on one folder
+     "arguments" is a list of string arguments for klusta
+     self.program is the string returned by "get_klusta_path"
+     
+     Example
+     To run "phy cluster-auto params.prm", you need
+        self.program == "phy"
+        arguments == ["cluster-auto", "params.prm"]
+ 
+   
